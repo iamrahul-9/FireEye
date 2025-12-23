@@ -1,26 +1,260 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* Enable class-based dark mode for Tailwind v4 */
+@variant dark (&:where(.dark, .dark *));
 
-@theme inline {
+@theme {
+  /* Vibrant Orange (Reverted) */
+  --color-primary: #F97316;
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: #1F2937;
+  --color-secondary-foreground: #FFFFFF;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-outfit);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  /* Custom Animations */
+  --animate-fade-in: fade-in 0.6s ease-out;
+  --animate-slide-up: slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-float: float 15s ease-in-out infinite;
+  --animate-float-delayed: float 18s ease-in-out infinite reverse;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  /* Wide floating animation to cover screen */
+  @keyframes float {
+    0% {
+      transform: translate(0, 0) rotate(0deg);
+    }
+
+    25% {
+      transform: translate(20vw, -10vh) rotate(10deg);
+    }
+
+    50% {
+      transform: translate(-10vw, 20vh) rotate(-5deg);
+    }
+
+    75% {
+      transform: translate(-20vw, -15vh) rotate(5deg);
+    }
+
+    100% {
+      transform: translate(0, 0) rotate(0deg);
+    }
+  }
+
+  /* Siren Pulse Animation */
+  @keyframes siren-pulse {
+
+    0%,
+    100% {
+      opacity: 0.1;
+    }
+
+    50% {
+      opacity: 0.3;
+    }
+  }
+
+  /* Ember Rising Animation */
+  @keyframes rise {
+    0% {
+      transform: translateY(100vh) scale(0);
+      opacity: 0;
+    }
+
+    50% {
+      opacity: 0.6;
+    }
+
+    100% {
+      transform: translateY(-20vh) scale(1);
+      opacity: 0;
+    }
+  }
+
+  /* Loader Animations */
+  --animate-spin-slow: spin 3s linear infinite;
+  --animate-spin-reverse-slow: spin-reverse 4s linear infinite;
+
+  @keyframes spin-reverse {
+    from {
+      transform: rotate(360deg);
+    }
+
+    to {
+      transform: rotate(0deg);
+    }
   }
 }
 
+/* Base Variables (Light Mode Default) */
+:root {
+  --background: #FAFAFA;
+  /* Light Gray for content clarity */
+  --foreground: #18181B;
+  /* Soft Black */
+
+  --font-inter: 'Inter', sans-serif;
+  --font-outfit: 'Outfit', sans-serif;
+}
+
+/* Dark Mode Variables */
+.dark {
+  --background: #000000;
+  /* Deep Black */
+  --foreground: #FFFFFF;
+}
+
+/* Global Reset & Body */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  @apply bg-[var(--background)] text-[var(--foreground)] antialiased font-sans transition-colors duration-300 overflow-x-hidden;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  @apply font-heading tracking-tight;
+}
+
+/* Hide Scrollbar but keep functionality */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* 
+   HIDE NATIVE NUMBER SPINNERS 
+   Allows for custom styled counters
+*/
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/*
+   LIQUID CARD:
+   Glassmorphism card used throughout the app.
+*/
+.liquid-card {
+  @apply relative overflow-hidden backdrop-blur-xl transition-all duration-300 border rounded-3xl;
+
+  /* Light Mode Glass */
+  @apply bg-white/80 border-gray-200 shadow-xl;
+  box-shadow:
+    0 10px 40px -10px rgba(0, 0, 0, 0.05),
+    0 2px 10px -5px rgba(0, 0, 0, 0.02);
+}
+
+.dark .liquid-card {
+  /* Dark Mode Glass */
+  @apply bg-black/40 border-white/10 shadow-2xl;
+  box-shadow:
+    0 8px 32px 0 rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/*
+   LIQUID BUTTON:
+*/
+.liquid-button {
+  @apply relative overflow-hidden transition-all duration-300 rounded-full font-medium px-6 py-2.5 shadow-lg hover:scale-[1.02] active:scale-[0.98];
+
+  /* Light Mode - Clean white with subtle glow */
+  @apply bg-white text-gray-900 border border-gray-200/50;
+  box-shadow:
+    0 2px 5px rgba(0, 0, 0, 0.06),
+    0 5px 10px rgba(249, 115, 22, 0.08);
+}
+
+.liquid-button:hover {
+  @apply bg-orange-50/50 border-orange-200/50 text-primary;
+}
+
+.dark .liquid-button {
+  @apply bg-white/5 text-primary border-white/10;
+  box-shadow: var(--shadow-lg);
+}
+
+.dark .liquid-button:hover {
+  @apply bg-orange-500/10 border-orange-500/30;
+}
+
+/*
+   LIQUID INPUT:
+*/
+.liquid-input {
+  @apply appearance-none rounded-xl px-4 py-3 outline-none transition-all duration-300 backdrop-blur-md shadow-inner;
+
+  /* Light Mode - Subtle glass */
+  @apply bg-white/70 border border-gray-200 text-gray-900 placeholder-gray-400;
+}
+
+.liquid-input:focus {
+  @apply ring-2 ring-primary/20 border-primary bg-white;
+}
+
+.dark .liquid-input {
+  @apply bg-white/5 border-white/10 text-white placeholder-gray-500;
+}
+
+select.liquid-input {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.75rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+}
+
+/* Sidebar Helper Classes - Higher opacity in light mode to prevent color bleeding */
+.sidebar-glass {
+  @apply backdrop-blur-3xl border-r transition-colors duration-300;
+  /* Light: Stronger opacity to block background tints + depth shadow */
+  @apply bg-white/85 border-gray-200/40;
+  box-shadow:
+    4px 0 24px -6px rgba(0, 0, 0, 0.1),
+    2px 0 12px -3px rgba(0, 0, 0, 0.05);
+}
+
+.dark .sidebar-glass {
+  /* Dark: Dark Glass + soft glow */
+  @apply bg-black/20 border-white/10;
+  box-shadow:
+    4px 0 32px -6px rgba(0, 0, 0, 0.4),
+    2px 0 16px -3px rgba(249, 115, 22, 0.08);
 }

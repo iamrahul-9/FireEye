@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install Dependencies
+      run: npm ci
+
+    - name: Lint
+      run: npm run lint
+
+    - name: Build
+      run: npm run build
+      env:
+        # Mock ENV for build time check (Public vars only usually needed for build if inlining)
+        # Note: If your build process connects to DB, you might need real secrets or mock them.
+        # Next.js build typically requires public env vars to be present if used in static generation.
+        NEXT_PUBLIC_SUPABASE_URL: "https://mock-project.supabase.co"
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: "mock-key"
