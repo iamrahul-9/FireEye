@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FireEye
+
+**Fire Safety Management, Reimagined.**
+
+FireEye is a next-generation SaaS platform designed to streamline fire safety inspections, asset management, and compliance reporting for modern facilities.
+
+## User Flow & Capabilities
+
+### 1. Onboarding
+*   **Login/Signup**: Secure authentication flow to access the platform.
+*   **Setup**: Initial configuration for facility managers to establish their workspace.
+
+### 2. Command Center (Dashboard)
+The central hub for all operations.
+*   **KPI Overview**: Instant checks on compliance rates, pending inspections, and critical issues.
+*   **Action Lists**: Prioritized lists for upcoming, pending, and urgent inspection tasks.
+*   **Timeline**: A visual history of past and future inspection events.
+
+### 3. Client Management
+Manage your portfolio of properties and clients.
+*   **Client Profiles**: Detailed records for each client, including locations and contact info.
+*   **Asset Tracking**: Maintain a digital inventory of fire safety assets for each client.
+
+### 4. Smart Inspections
+Perform efficient and accurate safety checks.
+*   **Digital Forms**: Streamlined inspection forms to replace paper processes.
+*   **Critical Issues**: Automatically flag and track critical safety violations.
+*   **Status Tracking**: Monitor inspections from scheduling to completion.
+
+### 5. Compliance Reports
+Generate actionable insights.
+*   **Matrix Reports**: comprehensive views of inspection data.
+*   **Export**: Download detailed PDF reports for clients and internal audit.
+*   **Analytics**: Track trends in compliance and safety over time.
 
 ## Getting Started
 
-First, run the development server:
+Follow these steps to run the application locally:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1.  **Install Dependencies**:
+    ```bash
+    npm install
+    ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2.  **Environment Setup**:
+    Create a `.env.local` file with your Supabase credentials:
+    ```env
+    NEXT_PUBLIC_SUPABASE_URL=your_project_url
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+    ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3.  **Run Development Server**:
+    ```bash
+    npm run dev
+    ```
+    Open [http://localhost:3000](http://localhost:3000) to view the app.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deployment
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This application is optimized for deployment on **Vercel**.
+*   **CI/CD**: specific GitHub Actions (`.github/workflows/ci.yml`) run on every push to ensure code quality.
+*   **Production**: Changes to the `main` branch are automatically deployed to production.
