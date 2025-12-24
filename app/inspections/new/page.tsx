@@ -2,18 +2,19 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useToast } from '@/contexts/ToastContext'
-import { ArrowLeft, Loader2, Save, CheckCircle, XCircle, UserPlus } from 'lucide-react'
-import Link from 'next/link'
+import { UserPlus } from 'lucide-react'
 import PageHeader from '@/components/PageHeader'
 import DynamicInspectionForm from '@/components/DynamicInspectionForm'
 
 
 
 function NewInspectionContent({ isAdmin }: { isAdmin: boolean }) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [clients, setClients] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [user, setUser] = useState<any>(null)
 
     useEffect(() => {
@@ -52,7 +53,9 @@ function NewInspectionContent({ isAdmin }: { isAdmin: boolean }) {
 
 export default function NewInspectionPage() {
     const [isAdmin, setIsAdmin] = useState(false)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { showToast } = useToast()
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const router = useRouter() // Use router for navigation
 
     useEffect(() => {

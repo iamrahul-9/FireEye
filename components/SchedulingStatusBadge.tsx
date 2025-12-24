@@ -1,5 +1,5 @@
 import { SchedulingStatus, getStatusColor } from '@/lib/scheduling'
-import { Calendar, AlertCircle, Clock, CheckCircle } from 'lucide-react'
+import { Calendar, AlertCircle, Clock } from 'lucide-react'
 
 interface Props {
     status: SchedulingStatus

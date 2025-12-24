@@ -1,8 +1,8 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
-import { format, isSameDay, isAfter, isBefore, addDays, subDays } from 'date-fns'
-import { CheckCircle, AlertTriangle, XCircle, Clock, Calendar as CalendarIcon, ChevronRight, ChevronLeft } from 'lucide-react'
+import { format, isSameDay, isAfter, subDays } from 'date-fns'
+import { CheckCircle, AlertTriangle, XCircle, Clock, ChevronRight, ChevronLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type TimelineEvent = {
@@ -89,7 +89,7 @@ export default function InspectionTimeline({ events, className }: InspectionTime
                 {/* Timeline Line */}
                 <div className="absolute left-0 right-0 top-[2.4rem] h-0.5 bg-gray-200 dark:bg-white/10 z-0 pointer-events-none min-w-max" style={{ width: `${sortedEvents.length * 280}px` }} />
 
-                {sortedEvents.map((event, idx) => {
+                {sortedEvents.map((event) => {
                     const isToday = isSameDay(event.date, new Date())
                     const isFuture = isAfter(event.date, new Date())
 

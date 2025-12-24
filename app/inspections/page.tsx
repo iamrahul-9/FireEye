@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { LiquidButton, LiquidCheckbox } from '@/components/Liquid'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import { Plus, Calendar, MapPin, ClipboardCheck, UserPlus, Trash2, Check } from 'lucide-react'
+import { Plus, Calendar, ClipboardCheck, UserPlus, Trash2, Check } from 'lucide-react'
 import PageHeader from '@/components/PageHeader'
 import SearchFilterBar from '@/components/SearchFilterBar'
 import EmptyState from '@/components/EmptyState'
@@ -76,23 +76,6 @@ export default function InspectionsPage() {
         setShowDeleteModal(false)
     }
 
-    useEffect(() => {
-        fetchInspections()
-        checkAdmin()
-    }, [])
-
-    const checkAdmin = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('role')
-                .eq('id', user.id)
-                .single()
-            setIsAdmin(profile?.role === 'admin')
-        }
-    }
-
     const fetchInspections = async () => {
         setLoading(true)
         const { data, error } = await supabase
@@ -110,11 +93,29 @@ export default function InspectionsPage() {
         if (error) {
             console.error('Error fetching inspections:', JSON.stringify(error, null, 2))
         } else {
-            // @ts-ignore - Supabase types are tricky with joins sometimes
+            // @ts-expect-error Supabase types are tricky with joins
             setInspections(data || [])
         }
         setLoading(false)
     }
+
+    const checkAdmin = async () => {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .single()
+            setIsAdmin(profile?.role === 'admin')
+        }
+    }
+
+    useEffect(() => {
+        fetchInspections()
+        checkAdmin()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     const filteredInspections = inspections.filter(inspection => {
         const matchesSearch =

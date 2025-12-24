@@ -9,7 +9,8 @@ interface ReportInspection {
     compliance_score: number
     critical_issues_count: number
     status: string
-    findings?: any // Optional full data
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    findings?: any // Complex inspection data structure
     ai_summary?: string
 }
 
@@ -66,6 +67,7 @@ export const generateReportPDF = (inspections: ReportInspection[], title: string
             yPos = 95 + (splitText.length * 5) // Dynamic spacing
 
             // Helper for Color Coding
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const applyStatusColor = (data: any, cellIndex: number) => {
                 if (data.section === 'body' && data.column.index === cellIndex) {
                     const text = (data.cell.raw as string || '').toLowerCase()
@@ -99,6 +101,7 @@ export const generateReportPDF = (inspections: ReportInspection[], title: string
                 doc.text('1. Floor Inspection Matrix', 14, yPos)
                 yPos += 5
 
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const floorRows = ins.findings.floors.map((f: any) => [
                     f.name,
                     f.extinguisher?.status || '-',
@@ -139,7 +142,7 @@ export const generateReportPDF = (inspections: ReportInspection[], title: string
                     }
                 })
 
-                // @ts-ignore
+                // @ts-expect-error jspdf-autotable adds lastAutoTable to doc
                 yPos = doc.lastAutoTable.finalY + 15
             }
 
@@ -148,6 +151,7 @@ export const generateReportPDF = (inspections: ReportInspection[], title: string
                 if (yPos > 250) { doc.addPage(); yPos = 20; }
                 doc.setFontSize(14); doc.setTextColor(0, 0, 0); doc.text('2. Pumps Matrix', 14, yPos); yPos += 5;
 
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const pumpRows = ins.findings.pumps.map((p: any) => [
                     p.name, p.status, p.remarks || '-', p.photo_url ? 'View Photo' : '-'
                 ])
@@ -173,7 +177,7 @@ export const generateReportPDF = (inspections: ReportInspection[], title: string
                         }
                     }
                 })
-                // @ts-ignore
+                // @ts-expect-error jspdf-autotable adds lastAutoTable to doc
                 yPos = doc.lastAutoTable.finalY + 15
             }
 
@@ -182,6 +186,7 @@ export const generateReportPDF = (inspections: ReportInspection[], title: string
                 if (yPos > 250) { doc.addPage(); yPos = 20; }
                 doc.setFontSize(14); doc.setTextColor(0, 0, 0); doc.text('3. Rooms Matrix', 14, yPos); yPos += 5;
 
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const roomRows = ins.findings.rooms.map((r: any) => [
                     r.name, r.extinguisher?.status || '-',
                     'N/A', 'N/A', r.remarks || '-',
@@ -209,7 +214,7 @@ export const generateReportPDF = (inspections: ReportInspection[], title: string
                         }
                     }
                 })
-                // @ts-ignore
+                // @ts-expect-error jspdf-autotable adds lastAutoTable to doc
                 yPos = doc.lastAutoTable.finalY + 15
             }
 
@@ -218,6 +223,7 @@ export const generateReportPDF = (inspections: ReportInspection[], title: string
                 if (yPos > 250) { doc.addPage(); yPos = 20; }
                 doc.setFontSize(14); doc.setTextColor(0, 0, 0); doc.text('4. System Summary', 14, yPos); yPos += 5;
 
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const systemRows = ins.findings.systems.map((s: any) => [
                     s.name, s.status, s.notes || '-', s.photo_url ? 'View Photo' : '-'
                 ])

@@ -57,9 +57,9 @@ export default function PhotoUpload({ onUpload, currentUrl, label = "Upload Phot
             onUpload(data.publicUrl)
             showToast('Photo uploaded successfully (Compressed)', 'success')
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Upload Error:', error)
-            showToast(error.message || 'Failed to upload photo', 'error')
+            showToast((error as Error).message || 'Failed to upload photo', 'error')
         } finally {
             setUploading(false)
         }

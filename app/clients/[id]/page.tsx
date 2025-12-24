@@ -1,27 +1,38 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/contexts/ToastContext'
 import PageHeader from '@/components/PageHeader'
 import { LiquidButton, LiquidCard } from '@/components/Liquid'
-import { Loader2, Trash2, Edit, Building, MapPin, Phone, Mail, CheckCircle } from 'lucide-react'
-import Link from 'next/link'
+import { Loader2, Trash2, Edit, MapPin, Phone, Mail, CheckCircle } from 'lucide-react'
+
+// Define Client type to avoid `any`
+interface Client {
+    id: string
+    name: string
+    type: string
+    address: string
+    phone: string
+    email: string
+    structure?: {
+        basements?: number
+        podiums?: number
+        floors?: number
+        rooms?: string[]
+        systems?: string[]
+    }
+}
 
 export default function ClientDetailsPage() {
     const params = useParams()
     const router = useRouter()
     const { showToast } = useToast()
-    const [client, setClient] = useState<any>(null)
+    const [client, setClient] = useState<Client | null>(null)
     const [loading, setLoading] = useState(true)
     const [isAdmin, setIsAdmin] = useState(false)
     const [deleting, setDeleting] = useState(false)
-
-    useEffect(() => {
-        fetchClient()
-        checkAdmin()
-    }, [])
 
     const checkAdmin = async () => {
         const { data: { user } } = await supabase.auth.getUser()
@@ -51,6 +62,12 @@ export default function ClientDetailsPage() {
         }
         setLoading(false)
     }
+
+    useEffect(() => {
+        fetchClient()
+        checkAdmin()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     const handleDelete = async () => {
         if (!window.confirm('Are you sure you want to delete this client? This action cannot be undone.')) return

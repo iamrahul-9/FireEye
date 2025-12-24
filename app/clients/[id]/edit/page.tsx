@@ -6,7 +6,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/contexts/ToastContext'
 import PageHeader from '@/components/PageHeader'
-import { LiquidButton, LiquidInput } from '@/components/Liquid'
+import { LiquidInput } from '@/components/Liquid'
 import DateInput from '@/components/DateInput'
 import { Plus, Building, Store, Check, MapPin, Phone, Mail, X, Calendar } from 'lucide-react'
 import FireEyeLoader from '@/components/FireEyeLoader'
@@ -208,9 +208,9 @@ export default function EditClientPage() {
 
             showToast('Client updated successfully!', 'success')
             router.push(`/clients/${params.id}`)
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error updating client:', error)
-            showToast(error.message || 'Failed to update client', 'error')
+            showToast((error as Error).message || 'Failed to update client', 'error')
         } finally {
             setLoading(false)
         }

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState, useLayoutEffect } from 'react'
 
 type Theme = 'light' | 'dark' | 'system'
 
@@ -12,17 +12,23 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
+// Use a safe layoutEffect that works with SSR
+const useSafeLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-    const [theme, setTheme] = useState<Theme>('system')
+    // Initialize theme from localStorage synchronously to avoid flash
+    const [theme, setThemeState] = useState<Theme>(() => {
+        if (typeof window === 'undefined') return 'system'
+        return (localStorage.getItem('theme') as Theme) || 'system'
+    })
     const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light')
 
-    useEffect(() => {
-        // Load saved theme
-        const saved = localStorage.getItem('theme') as Theme
-        if (saved) setTheme(saved)
-    }, [])
+    const setTheme = (newTheme: Theme) => {
+        setThemeState(newTheme)
+        localStorage.setItem('theme', newTheme)
+    }
 
-    useEffect(() => {
+    useSafeLayoutEffect(() => {
         const root = window.document.documentElement
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
 
@@ -51,10 +57,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         mediaQuery.addEventListener('change', listener)
         return () => mediaQuery.removeEventListener('change', listener)
 
-    }, [theme])
-
-    useEffect(() => {
-        localStorage.setItem('theme', theme)
     }, [theme])
 
     return (

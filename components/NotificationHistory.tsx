@@ -1,13 +1,42 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Mail, Clock, CheckCircle } from 'lucide-react'
 import FireEyeLoader from './FireEyeLoader'
 
+// Define proper type for notification logs
+interface NotificationLog {
+    id: string
+    type: string
+    recipient: string
+    message: string
+    created_at: string
+    clients: {
+        name: string
+    } | null
+}
+
 export default function NotificationHistory() {
-    const [logs, setLogs] = useState<any[]>([])
+    const [logs, setLogs] = useState<NotificationLog[]>([])
     const [loading, setLoading] = useState(true)
+
+    const fetchLogs = useCallback(async () => {
+        const { data, error } = await supabase
+            .from('notification_logs')
+            .select('*, clients(name)')
+            .order('created_at', { ascending: false })
+            .limit(20)
+
+        if (error) {
+            console.error('[NotificationHistory] Fetch Error:', error)
+        } else {
+            console.log('[NotificationHistory] Fetched:', data?.length, 'logs')
+        }
+
+        setLogs((data as NotificationLog[]) || [])
+        setLoading(false)
+    }, [])
 
     useEffect(() => {
         fetchLogs()
@@ -31,24 +60,7 @@ export default function NotificationHistory() {
         return () => {
             supabase.removeChannel(channel)
         }
-    }, [])
-
-    const fetchLogs = async () => {
-        const { data, error } = await supabase
-            .from('notification_logs')
-            .select('*, clients(name)')
-            .order('created_at', { ascending: false })
-            .limit(20)
-
-        if (error) {
-            console.error('[NotificationHistory] Fetch Error:', error)
-        } else {
-            console.log('[NotificationHistory] Fetched:', data?.length, 'logs')
-        }
-
-        setLogs(data || [])
-        setLoading(false)
-    }
+    }, [fetchLogs])
 
     if (loading) return <FireEyeLoader size="sm" />
 

@@ -15,6 +15,7 @@ export function LiquidButton({
     icon: Icon,
     children,
     className,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     variant = 'primary',
     ...props
 }: LiquidButtonProps) {

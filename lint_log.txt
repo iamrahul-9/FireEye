@@ -1,0 +1,464 @@
+
+> fireeye@0.1.0 lint
+> eslint
+
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/clients/[id]/edit/page.tsx
+    9:10  warning  'LiquidButton' is defined but never used  @typescript-eslint/no-unused-vars
+  211:25  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/clients/[id]/page.tsx
+   9:33  warning  'Building' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+  10:8   warning  'Link' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+  16:42  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @typescript-eslint/no-explicit-any
+  22:9   error    Error: Cannot access variable before it is declared
+
+`fetchClient` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/clients/[id]/page.tsx:22:9
+  20 |
+  21 |     useEffect(() => {
+> 22 |         fetchClient()
+     |         ^^^^^^^^^^^ `fetchClient` accessed before it is declared
+  23 |         checkAdmin()
+  24 |     }, [])
+  25 |
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/clients/[id]/page.tsx:38:5
+  36 |     }
+  37 |
+> 38 |     const fetchClient = async () => {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 39 |         const { data, error } = await supabase
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 40 |             .from('clients')
+     …
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 52 |         setLoading(false)
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 53 |     }
+     | ^^^^^^ `fetchClient` is declared here
+  54 |
+  55 |     const handleDelete = async () => {
+  56 |         if (!window.confirm('Are you sure you want to delete this client? This action cannot be undone.')) return                 react-hooks/immutability
+  23:9   error    Error: Cannot access variable before it is declared
+
+`checkAdmin` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/clients/[id]/page.tsx:23:9
+  21 |     useEffect(() => {
+  22 |         fetchClient()
+> 23 |         checkAdmin()
+     |         ^^^^^^^^^^ `checkAdmin` accessed before it is declared
+  24 |     }, [])
+  25 |
+  26 |     const checkAdmin = async () => {
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/clients/[id]/page.tsx:26:5
+  24 |     }, [])
+  25 |
+> 26 |     const checkAdmin = async () => {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 27 |         const { data: { user } } = await supabase.auth.getUser()
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 28 |         if (user) {
+     …
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 35 |         }
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 36 |     }
+     | ^^^^^^ `checkAdmin` is declared here
+  37 |
+  38 |     const fetchClient = async () => {
+  39 |         const { data, error } = await supabase  react-hooks/immutability
+  24:8   warning  React Hook useEffect has a missing dependency: 'fetchClient'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     react-hooks/exhaustive-deps
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/clients/new/page.tsx
+    9:10  warning  'LiquidCard' is defined but never used        @typescript-eslint/no-unused-vars
+    9:35  warning  'LiquidButton' is defined but never used      @typescript-eslint/no-unused-vars
+   11:8   warning  'SearchableSelect' is defined but never used  @typescript-eslint/no-unused-vars
+   13:25  warning  'Trash2' is defined but never used            @typescript-eslint/no-unused-vars
+  201:25  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/clients/page.tsx
+   6:41  warning  'Search' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+   8:24  warning  'LiquidInput' is defined but never used                                                                          @typescript-eslint/no-unused-vars
+  43:8   warning  React Hook useEffect has a missing dependency: 'fetchClients'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  97:25  error    Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/dashboard/layout.tsx
+   9:5   warning  'FireExtinguisher' is defined but never used  @typescript-eslint/no-unused-vars
+  33:38  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/dashboard/page.tsx
+    5:48  warning  'Calendar' is defined but never used                                                                                   @typescript-eslint/no-unused-vars
+   14:10  warning  'LiquidButton' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+   31:68  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+   32:66  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+   33:64  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+   40:8   warning  React Hook useEffect has a missing dependency: 'fetchDashboardData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   76:19  warning  'today' is assigned a value but never used                                                                             @typescript-eslint/no-unused-vars
+   77:29  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+   78:28  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+   79:27  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+  102:39  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+  119:92  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+  121:40  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+  135:47  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/dashboard/timeline/page.tsx
+    6:63  warning  'AlertTriangle' is defined but never used  @typescript-eslint/no-unused-vars
+   70:41  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+   73:40  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+   74:44  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  177:33  warning  'i' is defined but never used              @typescript-eslint/no-unused-vars
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/inspections/[id]/page.tsx
+  25:15  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+  44:9   error    Error: Cannot access variable before it is declared
+
+`fetchInspection` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/inspections/[id]/page.tsx:44:9
+  42 |
+  43 |     useEffect(() => {
+> 44 |         fetchInspection()
+     |         ^^^^^^^^^^^^^^^ `fetchInspection` accessed before it is declared
+  45 |     }, [id])
+  46 |
+  47 |     const fetchInspection = async () => {
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/inspections/[id]/page.tsx:47:5
+  45 |     }, [id])
+  46 |
+> 47 |     const fetchInspection = async () => {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 48 |         setLoading(true)
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+> 49 |         const { data, error } = await supabase
+     …
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+> 64 |         setLoading(false)
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+> 65 |     }
+     | ^^^^^^ `fetchInspection` is declared here
+  66 |
+  67 |     if (loading) {
+  68 |         return <FireEyeLoader fullscreen text="Loading Inspection Details..." />  react-hooks/immutability
+  45:8   warning  React Hook useEffect has a missing dependency: 'fetchInspection'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         react-hooks/exhaustive-deps
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/inspections/new/page.tsx
+   5:21  warning  'useSearchParams' is defined but never used     @typescript-eslint/no-unused-vars
+   7:10  warning  'ArrowLeft' is defined but never used           @typescript-eslint/no-unused-vars
+   7:21  warning  'Loader2' is defined but never used             @typescript-eslint/no-unused-vars
+   7:30  warning  'Save' is defined but never used                @typescript-eslint/no-unused-vars
+   7:36  warning  'CheckCircle' is defined but never used         @typescript-eslint/no-unused-vars
+   7:49  warning  'XCircle' is defined but never used             @typescript-eslint/no-unused-vars
+   8:8   warning  'Link' is defined but never used                @typescript-eslint/no-unused-vars
+  15:44  error    Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  17:38  error    Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  55:13  warning  'showToast' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  56:11  warning  'router' is assigned a value but never used     @typescript-eslint/no-unused-vars
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/inspections/page.tsx
+    7:26  warning  'MapPin' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+    7:68  warning  'Check' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+   73:13  error    Error: Cannot access variable before it is declared
+
+`fetchInspections` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/inspections/page.tsx:73:13
+  71 |         } else {
+  72 |             setSelectedIds(new Set())
+> 73 |             fetchInspections()
+     |             ^^^^^^^^^^^^^^^^ `fetchInspections` accessed before it is declared
+  74 |         }
+  75 |         setLoading(false)
+  76 |         setShowDeleteModal(false)
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/inspections/page.tsx:96:5
+   94 |     }
+   95 |
+>  96 |     const fetchInspections = async () => {
+      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  97 |         setLoading(true)
+      | ^^^^^^^^^^^^^^^^^^^^^^^^
+>  98 |         const { data, error } = await supabase
+      …
+      | ^^^^^^^^^^^^^^^^^^^^^^^^
+> 116 |         setLoading(false)
+      | ^^^^^^^^^^^^^^^^^^^^^^^^
+> 117 |     }
+      | ^^^^^^ `fetchInspections` is declared here
+  118 |
+  119 |     const filteredInspections = inspections.filter(inspection => {
+  120 |         const matchesSearch =  react-hooks/immutability
+   81:9   error    Error: Cannot access variable before it is declared
+
+`checkAdmin` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/inspections/page.tsx:81:9
+  79 |     useEffect(() => {
+  80 |         fetchInspections()
+> 81 |         checkAdmin()
+     |         ^^^^^^^^^^ `checkAdmin` accessed before it is declared
+  82 |     }, [])
+  83 |
+  84 |     const checkAdmin = async () => {
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/inspections/page.tsx:84:5
+  82 |     }, [])
+  83 |
+> 84 |     const checkAdmin = async () => {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 85 |         const { data: { user } } = await supabase.auth.getUser()
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 86 |         if (user) {
+     …
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 93 |         }
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 94 |     }
+     | ^^^^^^ `checkAdmin` is declared here
+  95 |
+  96 |     const fetchInspections = async () => {
+  97 |         setLoading(true)    react-hooks/immutability
+  113:13  error    Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    @typescript-eslint/ban-ts-comment
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/login/page.tsx
+   19:13  warning  'showToast' is assigned a value but never used                   @typescript-eslint/no-unused-vars
+  133:79  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/page.tsx
+  214:58  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  214:78  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  327:33  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/reports/[id]/page.tsx
+  27:15  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  46:9   error    Error: Cannot access variable before it is declared
+
+`fetchInspection` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/reports/[id]/page.tsx:46:9
+  44 |
+  45 |     useEffect(() => {
+> 46 |         fetchInspection()
+     |         ^^^^^^^^^^^^^^^ `fetchInspection` accessed before it is declared
+  47 |     }, [id])
+  48 |
+  49 |     const fetchInspection = async () => {
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/reports/[id]/page.tsx:49:5
+  47 |     }, [id])
+  48 |
+> 49 |     const fetchInspection = async () => {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 50 |         setLoading(true)
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+> 51 |         const { data, error } = await supabase
+     …
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+> 66 |         setLoading(false)
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+> 67 |     }
+     | ^^^^^^ `fetchInspection` is declared here
+  68 |
+  69 |     if (loading) {
+  70 |         return <FireEyeLoader fullscreen text="Loading Inspection Report..." />  react-hooks/immutability
+  47:8   warning  React Hook useEffect has a missing dependency: 'fetchInspection'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                react-hooks/exhaustive-deps
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/reports/matrix/page.tsx
+   5:19  warning  'Calendar' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+   5:39  warning  'Shield' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+  23:44  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  30:9   error    Error: Cannot access variable before it is declared
+
+`fetchClients` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/reports/matrix/page.tsx:30:9
+  28 |
+  29 |     useEffect(() => {
+> 30 |         fetchClients()
+     |         ^^^^^^^^^^^^ `fetchClients` accessed before it is declared
+  31 |     }, [])
+  32 |
+  33 |     const fetchClients = async () => {
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/reports/matrix/page.tsx:33:5
+  31 |     }, [])
+  32 |
+> 33 |     const fetchClients = async () => {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 34 |         const { data } = await supabase.from('clients').select('id, name, address, type')
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 35 |         if (data) setClients(data)
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 36 |     }
+     | ^^^^^^ `fetchClients` is declared here
+  37 |
+  38 |     const generateReport = async () => {
+  39 |         if (!selectedClientId) return  react-hooks/immutability
+  61:43  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  65:41  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/reports/page.tsx
+    6:69  warning  'CheckSquare' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+    6:82  warning  'Square' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+    8:10  warning  'LiquidCard' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+    8:22  warning  'LiquidButton' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+   15:8   warning  'SearchFilterBar' is defined but never used                                                                         @typescript-eslint/no-unused-vars
+   57:8   warning  React Hook useEffect has a missing dependency: 'fetchReportData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  110:44  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+  216:11  warning  'getCustomRangeText' is assigned a value but never used                                                             @typescript-eslint/no-unused-vars
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/app/signup/page.tsx
+  26:13  warning  'showToast' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/components/DynamicInspectionForm.tsx
+     7:16   warning  'MapPin' is defined but never used        @typescript-eslint/no-unused-vars
+     7:62   warning  'XCircle' is defined but never used       @typescript-eslint/no-unused-vars
+   192:77   error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   192:90   error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   409:34   error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   416:25   error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   505:51   warning  'e' is defined but never used             @typescript-eslint/no-unused-vars
+   547:128  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   597:132  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   751:123  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   770:122  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   811:105  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   829:106  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   853:112  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   981:104  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1033:102  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/components/Footer.tsx
+  2:23  warning  'MapPin' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/components/InspectionMatrix.tsx
+    3:10  warning  'CheckCircle' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+   37:9   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/components/InspectionMatrix.tsx:37:9
+  35 |
+  36 |     useEffect(() => {
+> 37 |         setMounted(true)
+     |         ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  38 |         return () => setMounted(false)
+  39 |     }, [])
+  40 |  react-hooks/set-state-in-effect
+   47:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @next/next/no-img-element
+   83:68  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+   98:25  warning  'actionRequired' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+  114:50  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  123:49  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  125:49  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  131:51  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  180:66  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  216:64  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  244:56  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  294:64  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  309:56  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  356:65  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  369:57  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/components/InspectionTimeline.tsx
+   4:38  warning  'isBefore' is defined but never used      @typescript-eslint/no-unused-vars
+   4:48  warning  'addDays' is defined but never used       @typescript-eslint/no-unused-vars
+   5:66  warning  'CalendarIcon' is defined but never used  @typescript-eslint/no-unused-vars
+  92:43  warning  'idx' is defined but never used           @typescript-eslint/no-unused-vars
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/components/Liquid.tsx
+  18:5  warning  'variant' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/components/NotificationHistory.tsx
+   9:38  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  13:9   error  Error: Cannot access variable before it is declared
+
+`fetchLogs` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/components/NotificationHistory.tsx:13:9
+  11 |
+  12 |     useEffect(() => {
+> 13 |         fetchLogs()
+     |         ^^^^^^^^^ `fetchLogs` accessed before it is declared
+  14 |
+  15 |         // Real-time subscription to auto-update logs
+  16 |         const channel = supabase
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/components/NotificationHistory.tsx:36:5
+  34 |     }, [])
+  35 |
+> 36 |     const fetchLogs = async () => {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 37 |         const { data, error } = await supabase
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 38 |             .from('notification_logs')
+     …
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 50 |         setLoading(false)
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 51 |     }
+     | ^^^^^^ `fetchLogs` is declared here
+  52 |
+  53 |     if (loading) return <FireEyeLoader size="sm" />
+  54 |  react-hooks/immutability
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/components/PhotoUpload.tsx
+  60:25  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  72:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/components/SchedulingStatusBadge.tsx
+  2:40  warning  'CheckCircle' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/components/StatusBadge.tsx
+  3:10  warning  'cn' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/contexts/ThemeContext.tsx
+  22:20  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/contexts/ThemeContext.tsx:22:20
+  20 |         // Load saved theme
+  21 |         const saved = localStorage.getItem('theme') as Theme
+> 22 |         if (saved) setTheme(saved)
+     |                    ^^^^^^^^ Avoid calling setState() directly within an effect
+  23 |     }, [])
+  24 |
+  25 |     useEffect(() => {  react-hooks/set-state-in-effect
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/lib/pdfGenerator.ts
+   12:16  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   69:45  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  102:63  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  142:17  error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  151:61  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  176:17  error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  185:61  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  212:17  error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  221:65  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/lib/scheduling.ts
+  1:82  warning  'isBefore' is defined but never used  @typescript-eslint/no-unused-vars
+  1:92  warning  'isAfter' is defined but never used   @typescript-eslint/no-unused-vars
+
+/Users/rahul/.gemini/antigravity/scratch/fireeye/lib/smartSummary.ts
+  1:26  warning  'FloorData' is defined but never used   @typescript-eslint/no-unused-vars
+  1:37  warning  'PumpData' is defined but never used    @typescript-eslint/no-unused-vars
+  1:47  warning  'RoomData' is defined but never used    @typescript-eslint/no-unused-vars
+  1:57  warning  'SystemData' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 140 problems (77 errors, 63 warnings)
+
