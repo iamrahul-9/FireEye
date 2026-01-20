@@ -77,7 +77,6 @@ export default function UpdatePasswordPage() {
                         <LiquidInput
                             label="New Password"
                             type="password"
-                            icon={Lock}
                             placeholder="••••••••"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}

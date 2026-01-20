@@ -54,7 +54,6 @@ export default function ForgotPasswordPage() {
                             <LiquidInput
                                 label="Email Address"
                                 type="email"
-                                icon={Mail}
                                 placeholder="name@fireeye.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
