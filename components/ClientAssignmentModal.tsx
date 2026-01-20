@@ -78,7 +78,7 @@ export default function ClientAssignmentModal({ isOpen, onClose, inspectorId, in
                     }
                     // Map assignment details
                     // accessing nested profile data
-                    // @ts-ignore
+                    // @ts-expect-error - Supabase join type inference issue
                     const pName = a.profiles?.full_name || 'Unknown'
                     newMap.set(a.client_id, {
                         id: a.inspector_id,
