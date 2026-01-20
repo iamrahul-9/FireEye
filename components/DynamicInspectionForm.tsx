@@ -50,7 +50,7 @@ export type FloorData = {
     }
     sprinkler?: { status: 'OK' | 'Leaking' | 'Painted' | 'N/A', photo_url?: string }
     alarm?: { status: 'OK' | 'Fault' | 'N/A', photo_url?: string }
-    refuge_area?: { status: 'Open' | 'Locked' | 'Obstructed / Occupied', photo_url?: string }
+    refuge_area?: { status: 'Empty' | 'Obstructed / Occupied', photo_url?: string }
 }
 
 export type RoomData = {
@@ -76,7 +76,7 @@ export type SystemData = {
 
 export type PumpData = {
     name: string
-    status: 'Auto (Working)' | 'Manual (Working)' | 'Not Working' | 'N/A' | 'Does Not Exist'
+    status: 'Auto (Working)' | 'Manual (Working)' | 'Not Working' | 'Does Not Exist'
     pressure: string
     remarks: string
     photo_url?: string
@@ -149,7 +149,7 @@ const calculateCompliance = (data: InspectionData) => {
         // Refuge Area
         if (f.refuge_area) {
             totalWeight += 5
-            if (f.refuge_area.status === 'Open') obtainedWeight += 5
+            if (f.refuge_area.status === 'Empty') obtainedWeight += 5
             else criticalCount++
         }
     })
@@ -166,7 +166,7 @@ const calculateCompliance = (data: InspectionData) => {
 
     // 3. Pumps
     data.pumps.forEach(p => {
-        if (p.status !== 'N/A' && p.status !== 'Does Not Exist') {
+        if (p.status !== 'Does Not Exist') {
             totalWeight += WEIGHTS['Pumps']
             if (p.status.includes('Working')) obtainedWeight += WEIGHTS['Pumps']
             if (p.status === 'Not Working') criticalCount++
@@ -251,7 +251,7 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                 hydrant: undefined,
                 sprinkler: undefined,
                 alarm: undefined,
-                refuge_area: refugeFloors.includes(floor) ? { status: 'Open' } : undefined
+                refuge_area: refugeFloors.includes(floor) ? { status: 'Empty' } : undefined
             }))
 
             // 2. Rooms
@@ -279,23 +279,23 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
 
             if (hasHydrantSystems) {
                 pumps.push(
-                    { name: 'Main Pump - Hydrant', status: 'N/A', pressure: '', remarks: '' },
-                    { name: 'Jockey Pump - Hydrant', status: 'N/A', pressure: '', remarks: '' }
+                    { name: 'Main Pump - Hydrant', status: 'Auto (Working)', pressure: '', remarks: '' },
+                    { name: 'Jockey Pump - Hydrant', status: 'Auto (Working)', pressure: '', remarks: '' }
                 )
             }
 
             if (hasSprinklerSystem) {
                 pumps.push(
-                    { name: 'Main Pump - Sprinkler', status: 'N/A', pressure: '', remarks: '' },
-                    { name: 'Jockey Pump - Sprinkler', status: 'N/A', pressure: '', remarks: '' }
+                    { name: 'Main Pump - Sprinkler', status: 'Auto (Working)', pressure: '', remarks: '' },
+                    { name: 'Jockey Pump - Sprinkler', status: 'Auto (Working)', pressure: '', remarks: '' }
                 )
             }
 
             // Common pumps if ANY water-based system exists
             if (hasHydrantSystems || hasSprinklerSystem) {
                 pumps.push(
-                    { name: 'Booster Pump', status: 'N/A', pressure: '', remarks: '' },
-                    { name: 'Diesel Pump', status: 'N/A', pressure: '', remarks: '' }
+                    { name: 'Booster Pump', status: 'Auto (Working)', pressure: '', remarks: '' },
+                    { name: 'Diesel Pump', status: 'Auto (Working)', pressure: '', remarks: '' }
                 )
             }
 
@@ -343,7 +343,7 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
         }
 
         // 2. Pumps Required
-        const unselectedPumps = data.pumps.filter(p => p.status === 'N/A')
+        const unselectedPumps: typeof data.pumps = [] // All pumps now have valid defaults
         if (unselectedPumps.length > 0) {
             setValidationError(`Please select a status for the following pumps:\n\n${unselectedPumps.map(p => p.name).join('\n')}`)
             return
@@ -368,7 +368,7 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
             }
             if (f.sprinkler && f.sprinkler.status !== 'OK' && f.sprinkler.status !== 'N/A' && !f.sprinkler.photo_url) missingPhotos.push(`${f.name}: Sprinkler (${f.sprinkler.status})`)
             if (f.alarm && f.alarm.status !== 'OK' && f.alarm.status !== 'N/A' && !f.alarm.photo_url) missingPhotos.push(`${f.name}: Alarm (${f.alarm.status})`)
-            if (f.refuge_area && f.refuge_area.status !== 'Open' && !f.refuge_area.photo_url) missingPhotos.push(`${f.name}: Refuge Area (${f.refuge_area.status})`)
+            if (f.refuge_area && f.refuge_area.status !== 'Empty' && !f.refuge_area.photo_url) missingPhotos.push(`${f.name}: Refuge Area (${f.refuge_area.status})`)
         })
 
         // Pumps
@@ -615,7 +615,7 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                                                             <div>
                                                                 <label className="text-xs font-bold uppercase text-gray-400 mb-1 block">Accessibility Status</label>
                                                                 <select
-                                                                    className={`liquid-input w-full text-sm font-medium ${floor.refuge_area.status !== 'Open'
+                                                                    className={`liquid-input w-full text-sm font-medium ${floor.refuge_area.status !== 'Empty'
                                                                         ? 'border-red-500 bg-red-50 text-red-600'
                                                                         : 'border-green-500/30'
                                                                         }`}
@@ -626,15 +626,16 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                                                                         setData({ ...data, floors: newFloors })
                                                                     }}
                                                                 >
+                                                                    <option value="Empty">Empty</option>
                                                                     <option value="Obstructed / Occupied">Obstructed / Occupied</option>
                                                                 </select>
-                                                                {floor.refuge_area.status !== 'Open' && (
+                                                                {floor.refuge_area.status !== 'Empty' && (
                                                                     <p className="text-xs text-red-500 mt-2 font-bold flex items-center gap-1">
                                                                         <AlertTriangle className="h-3 w-3" /> Critical Failure: Refuge Area must be accessible always.
                                                                     </p>
                                                                 )}
 
-                                                                {floor.refuge_area.status !== 'Open' && (
+                                                                {floor.refuge_area.status !== 'Empty' && (
                                                                     <div className="mt-3">
                                                                         <PhotoUpload
                                                                             required={true}
@@ -1115,7 +1116,6 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                                                         <option value="Auto (Working)">Auto (Working)</option>
                                                         <option value="Manual (Working)">Manual (Working)</option>
                                                         <option value="Not Working" className="text-red-500 font-bold">Not Working</option>
-                                                        <option value="N/A">N/A</option>
                                                         <option value="Does Not Exist">Does Not Exist</option>
                                                     </select>
                                                     {pump.status === 'Not Working' && (

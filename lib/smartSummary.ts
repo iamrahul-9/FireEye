@@ -26,9 +26,9 @@ export const generateInspectionSummary = (data: InspectionData): string => {
             criticalIssues.push(`Fire alarm system on ${floor.name} shows a fault condition.`)
             isCompliant = false
         }
-        // Critical: Refuge Locked
-        if (floor.refuge_area?.status === 'Locked' || floor.refuge_area?.status === 'Obstructed / Occupied') {
-            criticalIssues.push(`Refuge area on ${floor.name} is ${floor.refuge_area.status.toLowerCase()}, posing a serious safety risk.`)
+        // Critical: Refuge Obstructed
+        if (floor.refuge_area?.status === 'Obstructed / Occupied') {
+            criticalIssues.push(`Refuge area on ${floor.name} is obstructed/occupied, posing a serious safety risk.`)
             isCompliant = false
         }
     })
