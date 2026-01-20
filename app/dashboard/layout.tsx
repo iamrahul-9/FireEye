@@ -15,10 +15,12 @@ import {
     Users,
     BarChart3,
     ChevronUp,
-    Calendar
+    Calendar,
+    Shield
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import ThemeToggle from '@/components/ThemeToggle'
+import { ensureUserProfile } from '@/app/actions/profile'
 
 export default function DashboardLayout({
     children,
@@ -31,6 +33,8 @@ export default function DashboardLayout({
     const router = useRouter()
 
     const [user, setUser] = useState<any>(null)
+    const [role, setRole] = useState<string | null>(null)
+    const [fullName, setFullName] = useState<string | null>(null)
 
     useEffect(() => {
         const checkUser = async () => {
@@ -39,6 +43,27 @@ export default function DashboardLayout({
                 router.push('/login')
             } else {
                 setUser(session.user)
+
+                // Fetch Profile Data directly for UI speed
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('role, full_name')
+                    .eq('id', session.user.id)
+                    .single()
+
+                if (profile) {
+                    setRole(profile.role)
+                    setFullName(profile.full_name)
+                }
+
+                // Self-Heal: Ensure profile exists (background check)
+                ensureUserProfile().then(res => {
+                    if (res.status === 'healed') {
+                        console.log('Profile automatically repaired.')
+                        window.location.reload()
+                    }
+                    // We already set role/name above, but this confirms it exists
+                })
             }
         }
         checkUser()
@@ -49,13 +74,18 @@ export default function DashboardLayout({
         router.push('/login')
     }
 
-    const navItems = [
-        { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-        { label: 'Timeline', href: '/dashboard/timeline', icon: Calendar },
-        { label: 'Inspections', href: '/inspections', icon: ClipboardCheck },
-        { label: 'Clients', href: '/clients', icon: Users },
-        { label: 'Reports', href: '/reports', icon: BarChart3 },
+    const allNavItems = [
+        { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'inspector'] },
+        { label: 'Timeline', href: '/dashboard/timeline', icon: Calendar, roles: ['admin', 'inspector'] },
+        { label: 'Inspections', href: '/inspections', icon: ClipboardCheck, roles: ['admin', 'inspector'] },
+        { label: 'Clients', href: '/clients', icon: Users, roles: ['admin', 'inspector'] },
+        { label: 'Reports', href: '/reports', icon: BarChart3, roles: ['admin', 'inspector'] },
+        { label: 'Team', href: '/team', icon: Users, roles: ['admin'] }, // Admin only
     ]
+
+    // Fix: Default to 'inspector' (least privilege) so Admin tabs don't flash while loading
+    const effectiveRole = role || 'inspector'
+    const navItems = allNavItems.filter(item => item.roles.includes(effectiveRole))
 
     return (
         <div className="min-h-screen relative overflow-hidden font-sans text-gray-900 dark:text-white">
@@ -147,11 +177,15 @@ export default function DashboardLayout({
                             className="w-full flex items-center p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/5 hover:border-gray-300 dark:hover:border-white/20 hover:bg-gray-100 dark:hover:bg-white/10 transition-all group"
                         >
                             <div className="h-9 w-9 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center border border-primary/20 text-primary font-bold shrink-0">
-                                {user?.email?.[0].toUpperCase()}
+                                {(fullName || user?.email)?.[0]?.toUpperCase()}
                             </div>
                             <div className="ml-3 flex-1 text-left overflow-hidden min-w-0">
-                                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user?.email?.split('@')[0]}</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Admin Workspace</p>
+                                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                    {fullName || user?.email?.split('@')[0]}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate capitalize">
+                                    {role ? `${role} Workspace` : 'Loading...'}
+                                </p>
                             </div>
                             <ChevronUp className={cn("h-4 w-4 text-gray-400 transition-transform", showUserMenu ? "rotate-180" : "")} />
                         </button>

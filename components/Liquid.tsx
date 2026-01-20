@@ -56,12 +56,18 @@ export function LiquidCard({ children, className, ...props }: React.HTMLAttribut
 
 interface LiquidInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
     error?: string
+    label?: string
 }
 
 export const LiquidInput = React.forwardRef<HTMLInputElement, LiquidInputProps>(
-    ({ className, error, ...props }, ref) => {
+    ({ className, error, label, ...props }, ref) => {
         return (
             <div className="w-full">
+                {label && (
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 ml-1">
+                        {label}
+                    </label>
+                )}
                 <input
                     ref={ref}
                     className={cn(

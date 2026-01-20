@@ -3,7 +3,10 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import { Building, MapPin, Phone, Mail, Search, UserPlus, Users, Trash2 } from 'lucide-react'
+import { Building, MapPin, Phone, Mail, Search, UserPlus, Users, Trash2, FileDown } from 'lucide-react'
+import { downloadCSV, downloadExcel } from '@/lib/export'
+import { generateClientListPDF } from '@/lib/pdfGenerator'
+import ExportMenu from '@/components/ExportMenu'
 import PageHeader from '@/components/PageHeader'
 import { LiquidButton, LiquidInput, LiquidCheckbox } from '@/components/Liquid'
 import EmptyState from '@/components/EmptyState'
@@ -111,6 +114,31 @@ export default function ClientsPage() {
         return matchesSearch && matchesType
     })
 
+    const handleExport = (type: 'csv' | 'excel' | 'pdf') => {
+        if (type === 'pdf') {
+            generateClientListPDF(filteredClients, 'Clients Database')
+            showToast('Clients exported as PDF', 'success')
+            return
+        }
+
+        const dataToExport = filteredClients.map(c => ({
+            ID: c.id,
+            Name: c.name,
+            Address: c.address,
+            Phone: c.phone || 'N/A',
+            Email: c.email || 'N/A',
+            Type: c.type,
+            NextInspection: c.next_inspection_date ? new Date(c.next_inspection_date).toLocaleDateString() : 'N/A'
+        }))
+
+        const filename = `clients_export_${new Date().toISOString().split('T')[0]}`
+
+        if (type === 'csv') downloadCSV(dataToExport, filename)
+        if (type === 'excel') downloadExcel(dataToExport, filename)
+
+        showToast(`Clients exported as ${type.toUpperCase()}`, 'success')
+    }
+
     if (loading) {
         return <FireEyeLoader fullscreen text="Loading Clients..." />
     }
@@ -122,12 +150,19 @@ export default function ClientsPage() {
                 subtitle="Manage client database"
             >
                 {isAdmin && (
-                    <LiquidButton
-                        href="/clients/new"
-                        icon={UserPlus}
-                    >
-                        Add Client
-                    </LiquidButton>
+                    <div className="flex items-center gap-3">
+                        <ExportMenu
+                            onExportCSV={() => handleExport('csv')}
+                            onExportExcel={() => handleExport('excel')}
+                            onExportPDF={() => handleExport('pdf')}
+                        />
+                        <LiquidButton
+                            href="/clients/new"
+                            icon={UserPlus}
+                        >
+                            Add Client
+                        </LiquidButton>
+                    </div>
                 )}
             </PageHeader>
 
@@ -238,11 +273,11 @@ export default function ClientsPage() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Phone className="h-4 w-4 flex-shrink-0" />
-                                        <span>{client.phone}</span>
+                                        <span>{client.phone || 'N/A'}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Mail className="h-4 w-4 flex-shrink-0" />
-                                        <span className="truncate">{client.email}</span>
+                                        <span className="truncate">{client.email || 'N/A'}</span>
                                     </div>
                                     {client.next_inspection_date && (
                                         <div className="pt-2 mt-2 border-t border-gray-100 dark:border-white/10 flex items-center justify-between">

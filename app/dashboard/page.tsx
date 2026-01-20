@@ -12,7 +12,7 @@ import SchedulingStatusBadge from '@/components/SchedulingStatusBadge'
 import InspectionTimeline, { TimelineEvent } from '@/components/InspectionTimeline'
 import { useToast } from '@/contexts/ToastContext'
 import { LiquidButton } from '@/components/Liquid'
-import NotificationHistory from '@/components/NotificationHistory'
+import ActivityFeed from '@/components/ActivityFeed'
 
 export default function DashboardPage() {
     const { showToast } = useToast()
@@ -325,8 +325,8 @@ export default function DashboardPage() {
                     </div>
                     <span className="font-bold text-sm">Add Client</span>
                 </Link>
-                <div className="col-span-2 md:col-span-2 liquid-card p-4 flex flex-col justify-start overflow-hidden">
-                    <NotificationHistory />
+                <div className="col-span-2 md:col-span-2 liquid-card p-4 flex flex-col justify-start overflow-hidden h-[400px]">
+                    <ActivityFeed />
                 </div>
             </div>
         </div>

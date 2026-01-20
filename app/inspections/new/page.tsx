@@ -10,10 +10,11 @@ import DynamicInspectionForm from '@/components/DynamicInspectionForm'
 
 
 
-function NewInspectionContent({ isAdmin }: { isAdmin: boolean }) {
+function NewInspectionContent() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [clients, setClients] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
+    const [isAdmin, setIsAdmin] = useState(false)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [user, setUser] = useState<any>(null)
 
@@ -22,10 +23,36 @@ function NewInspectionContent({ isAdmin }: { isAdmin: boolean }) {
             const { data: { user } } = await supabase.auth.getUser()
             setUser(user)
 
-            const { data } = await supabase
+            if (!user) return
+
+            // Fetch role FIRST
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .single()
+
+            const userIsAdmin = profile?.role === 'admin'
+            setIsAdmin(userIsAdmin)
+
+            // Then fetch clients based on role
+            let query = supabase
                 .from('clients')
-                .select('*')
+                .select(userIsAdmin
+                    ? '*'
+                    : '*, client_assignments!inner(inspector_id)'
+                )
                 .order('name', { ascending: true })
+
+            if (!userIsAdmin) {
+                query = query.eq('client_assignments.inspector_id', user.id)
+            }
+
+            const { data, error } = await query
+
+            if (error) {
+                console.error('Client fetch error:', error)
+            }
 
             setClients(data || [])
             setLoading(false)
@@ -52,31 +79,10 @@ function NewInspectionContent({ isAdmin }: { isAdmin: boolean }) {
 }
 
 export default function NewInspectionPage() {
-    const [isAdmin, setIsAdmin] = useState(false)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { showToast } = useToast()
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const router = useRouter() // Use router for navigation
-
-    useEffect(() => {
-        const checkAdmin = async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (user) {
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('role')
-                    .eq('id', user.id)
-                    .single()
-                setIsAdmin(profile?.role === 'admin')
-            }
-        }
-        checkAdmin()
-    }, [])
-
     return (
         <Suspense fallback={<div className="p-8 text-center">Loading...</div>}>
             <div className="relative">
-                <NewInspectionContent isAdmin={isAdmin} />
+                <NewInspectionContent />
             </div>
         </Suspense>
     )

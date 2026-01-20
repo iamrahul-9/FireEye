@@ -12,6 +12,7 @@ import ConfirmationModal from '@/components/ConfirmationModal'
 import PhotoUpload from '@/components/PhotoUpload'
 import { generateInspectionSummary } from '@/lib/smartSummary'
 import { calculateNextInspectionDate } from '@/lib/scheduling'
+import { sendAssignmentEmailAction, sendCriticalAlertAction } from '@/app/actions'
 
 // --- Types ---
 
@@ -20,6 +21,7 @@ type Client = {
     name: string
     address: string
     type: 'Office/Store' | 'Society/Residential'
+    wings?: string[]
     structure: {
         basements: number
         podiums: number
@@ -196,6 +198,7 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
     // Selection State
     const [selectedClientId, setSelectedClientId] = useState('')
     const [selectedClient, setSelectedClient] = useState<Client | null>(null)
+    const [selectedWing, setSelectedWing] = useState<string | null>(null)
 
     // Form State
     const [data, setData] = useState<InspectionData>({
@@ -220,12 +223,22 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
     useEffect(() => {
         if (!selectedClientId) {
             setSelectedClient(null)
+            setSelectedWing(null)
             return
         }
 
         const client = clients.find(c => c.id === selectedClientId) as Client
         if (client) {
-            setSelectedClient(client)
+            // New Client Selected -> Reset Wing
+            if (client.id !== selectedClient?.id) {
+                setSelectedWing(null)
+                setSelectedClient(client)
+            }
+
+            // If Client has wings but none selected, do NOT generate data yet
+            if (client.wings && client.wings.length > 0 && !selectedWing) {
+                return
+            }
 
             // Generate Initial Data Structure
             const structure = client.structure || {}
@@ -308,7 +321,7 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                 setExpandedFloors({ [floors[0].name]: true })
             }
         }
-    }, [selectedClientId, clients])
+    }, [selectedClientId, clients, selectedWing])
 
     const toggleFloor = (floorName: string) => {
         setExpandedFloors(prev => ({ ...prev, [floorName]: !prev[floorName] }))
@@ -320,6 +333,12 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
         // 1. Client Required
         if (!selectedClientId) {
             showToast('Please select a client before submitting.', 'error')
+            return
+        }
+
+        // 1.5 Wing Required (if applicable)
+        if (selectedClient?.wings && selectedClient.wings.length > 0 && !selectedWing) {
+            showToast('Please select a Wing.', 'error')
             return
         }
 
@@ -376,22 +395,57 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
         try {
             const { score, criticalCount } = calculateCompliance(data)
 
+            // Get user's organization_id
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('organization_id')
+                .eq('id', user.id)
+                .single()
+
+            if (!profile?.organization_id) {
+                throw new Error('User organization not found')
+            }
+
             // Determine Status
             let status = 'Completed'
             if (criticalCount > 0) status = 'Action Required'
             else if (score < 100) status = 'Completed'
 
-            const { error } = await supabase.from('inspections').insert({
+            const { data: newInspection, error } = await supabase.from('inspections').insert({
                 client_id: selectedClientId,
                 inspector_id: user.id,
+                organization_id: profile.organization_id,
+                wing: selectedWing,
+                date: new Date().toISOString(),
                 status: status,
                 compliance_score: score,
                 critical_issues_count: criticalCount,
                 findings: data,
                 ai_summary: `Inspection completed. Score: ${score}%. ${criticalCount} critical issues identified.`
-            })
+            }).select().single()
 
             if (error) throw error
+
+            // --- Send Email Notification ---
+            if (user?.email && newInspection) {
+                // 1. Receipt to Inspector
+                sendAssignmentEmailAction({
+                    inspectorEmail: user.email,
+                    inspectorName: user.user_metadata?.full_name || 'Inspector',
+                    clientName: selectedClient?.name || 'Unknown Client',
+                    date: new Date().toISOString(),
+                    inspectionId: newInspection.id
+                }).catch(err => console.error('Failed to send assignment email:', err))
+
+                // 2. Critical Alert to Admin (if issues found)
+                if (criticalCount > 0) {
+                    sendCriticalAlertAction({
+                        clientName: selectedClient?.name || 'Unknown Client',
+                        issuesCount: criticalCount,
+                        inspectionId: newInspection.id
+                    }).catch(err => console.error('Failed to send critical alert:', err))
+                }
+            }
 
             // --- Auto Schedule Next Inspection ---
             // --- Auto Schedule Next Inspection ---
@@ -414,8 +468,11 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
             router.push('/inspections')
 
         } catch (error: any) {
-            console.error('Submission error:', error)
-            showToast(error.message || 'Failed to submit', 'error')
+            console.error('Submission error object:', error)
+            console.error('Submission error JSON:', JSON.stringify(error, null, 2))
+
+            const msg = error.message || error.error_description || 'Failed to submit inspection (Unknown Error)'
+            showToast(msg, 'error')
         } finally {
             setLoading(false)
         }
@@ -453,6 +510,27 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                     />
                 </div>
             </div>
+
+            {/* 1.5 Wing Selection (Conditional) */}
+            {selectedClient?.wings && selectedClient.wings.length > 0 && (
+                <div className="relative z-40 bg-white/80 dark:bg-black/40 border border-gray-200 dark:border-white/10 shadow-xl rounded-xl p-6 backdrop-blur-xl transition-all duration-300 ring-1 ring-black/5 -mt-4 animate-fade-in-down">
+                    <label className="block text-sm font-medium mb-2">Select Wing / Building</label>
+                    <div className="flex flex-wrap gap-2">
+                        {selectedClient.wings.map(wing => (
+                            <button
+                                key={wing}
+                                onClick={() => setSelectedWing(wing)}
+                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all border ${selectedWing === wing
+                                    ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20 scale-105'
+                                    : 'bg-white dark:bg-white/5 border-gray-200 dark:border-white/10 hover:border-primary/50 text-gray-600 dark:text-gray-300'
+                                    }`}
+                            >
+                                {wing}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {selectedClient && (
                 <>

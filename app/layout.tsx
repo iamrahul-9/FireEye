@@ -21,6 +21,7 @@ export const metadata: Metadata = {
 
 import { ToastProvider } from "@/contexts/ToastContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { OrgProvider } from "@/contexts/OrgContext";
 
 export default function RootLayout({
   children,
@@ -28,10 +29,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${outfit.variable}`}>
-      <body
-        className="antialiased relative min-h-screen overflow-x-hidden font-sans"
-      >
+    <html
+      lang="en"
+      className={`${inter.variable} ${outfit.variable}`}
+      suppressHydrationWarning
+    >
+      <body className="antialiased relative min-h-screen overflow-x-hidden font-sans">
         {/* Global Ambient Background */}
         {/* Global Ambient Background */}
         <div className="fixed inset-0 z-[-1] overflow-hidden pointer-events-none transition-colors duration-500 bg-background">
@@ -42,7 +45,9 @@ export default function RootLayout({
         </div>
 
         <ThemeProvider>
-          <ToastProvider>{children}</ToastProvider>
+          <OrgProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </OrgProvider>
         </ThemeProvider>
       </body>
     </html>

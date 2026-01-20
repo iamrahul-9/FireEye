@@ -174,12 +174,26 @@ export default function NewClientPage() {
         try {
             const structureMap = form.type === 'Society/Residential' ? calculateStructure() : ['Ground']
 
+            // Get current user's organization_id
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error('Not authenticated')
+
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('organization_id')
+                .eq('id', user.id)
+                .single()
+
+            if (!profile?.organization_id) throw new Error('No organization found')
+
             const { error } = await supabase.from('clients').insert({
                 name: form.name,
                 address: form.address,
                 phone: form.phone,
                 email: form.email,
                 type: form.type,
+                organization_id: profile.organization_id,
+                next_inspection_date: form.next_inspection_date || null,
                 structure: {
                     basements: form.basements,
                     podiums: form.podiums,
@@ -189,9 +203,7 @@ export default function NewClientPage() {
                     systems: form.systems,
                     has_refuge_area: form.hasRefugeArea,
                     refuge_floors: form.refugeFloors
-                },
-                next_inspection_date: form.next_inspection_date || null,
-                user_id: (await supabase.auth.getUser()).data.user?.id
+                }
             })
 
             if (error) throw error

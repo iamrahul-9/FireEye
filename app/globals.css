@@ -171,7 +171,9 @@ input[type=number] {
    Glassmorphism card used throughout the app.
 */
 .liquid-card {
-  @apply relative overflow-hidden backdrop-blur-xl transition-all duration-300 border rounded-3xl;
+  @apply relative
+  /* overflow-hidden removed for dropdowns */
+  backdrop-blur-xl transition-all duration-300 border rounded-3xl;
 
   /* Light Mode Glass */
   @apply bg-white/80 border-gray-200 shadow-xl;

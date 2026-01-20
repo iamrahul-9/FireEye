@@ -27,39 +27,63 @@ export default function PhotoUpload({ onUpload, currentUrl, label = "Upload Phot
         setUploading(true)
 
         try {
-            // 1. Compress Image (Client-Side)
-            const compressedBlob = await compressImage(file, 1080, 0.7) // Max 1080px, 70% Quality
+            // 1. Compress Image
+            const compressedBlob = await compressImage(file, 1080, 0.7)
             file = new File([compressedBlob], file.name, {
                 type: 'image/jpeg',
                 lastModified: Date.now(),
             })
 
-            const fileExt = 'jpg' // Force JPG after compression
-            const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`
-            const filePath = `${fileName}`
+            // 2. Cloudinary Upload Strategy
+            const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+            const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
 
-            // 2. Upload to Supabase
-            const { error: uploadError } = await supabase.storage
-                .from('inspection-photos')
-                .upload(filePath, file)
+            if (cloudName && uploadPreset) {
+                const formData = new FormData()
+                formData.append('file', file)
+                formData.append('upload_preset', uploadPreset)
 
-            if (uploadError) {
-                if (uploadError.message.includes('Bucket not found')) {
-                    throw new Error('Storage bucket "inspection-photos" not found. Please contact admin.')
+                const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+                    method: 'POST',
+                    body: formData
+                })
+
+                if (!res.ok) {
+                    const error = await res.json()
+                    throw new Error(error.error?.message || 'Cloudinary upload failed')
                 }
-                throw uploadError
+
+                const data = await res.json()
+                onUpload(data.secure_url)
+                showToast('Photo uploaded to Cloud', 'success')
+            } else {
+                // 3. Fallback: Supabase Storage
+                const fileExt = 'jpg'
+                const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`
+                const filePath = `${fileName}`
+
+                const { error: uploadError } = await supabase.storage
+                    .from('inspection-photos')
+                    .upload(filePath, file)
+
+                if (uploadError) {
+                    if (uploadError.message.includes('Bucket not found')) {
+                        throw new Error('Storage bucket "inspection-photos" not found. Please contact admin.')
+                    }
+                    throw uploadError
+                }
+
+                const { data } = supabase.storage
+                    .from('inspection-photos')
+                    .getPublicUrl(filePath)
+
+                onUpload(data.publicUrl)
+                showToast('Photo uploaded successfully (Local)', 'success')
             }
 
-            const { data } = supabase.storage
-                .from('inspection-photos')
-                .getPublicUrl(filePath)
-
-            onUpload(data.publicUrl)
-            showToast('Photo uploaded successfully (Compressed)', 'success')
-
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error('Upload Error:', error)
-            showToast((error as Error).message || 'Failed to upload photo', 'error')
+            showToast(error.message || 'Failed to upload photo', 'error')
         } finally {
             setUploading(false)
         }

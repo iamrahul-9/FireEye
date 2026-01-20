@@ -262,14 +262,20 @@ export const generateReportPDF = (inspections: ReportInspection[], title: string
         }
 
         // Summary Report Mode (List of Inspections)
-        // Title
-        doc.setFontSize(20)
-        doc.text(title, 14, 22)
+        // Title Header
+        doc.setFillColor(26, 26, 26) // Dark Background
+        doc.rect(0, 0, 210, 40, 'F')
+        doc.setFontSize(22)
+        doc.setTextColor(255, 255, 255)
+        doc.text(title, 14, 25)
 
         // Metadata
         doc.setFontSize(10)
-        doc.text(`Generated: ${format(new Date(), 'PPpp')}`, 14, 30)
-        doc.text(`Total Inspections: ${inspections.length}`, 14, 36)
+        doc.setTextColor(200, 200, 200)
+        doc.text(`Generated: ${format(new Date(), 'PPpp')}`, 14, 35)
+
+        // Stats in Header (Optional but nice)
+        doc.text(`Total Inspections: ${inspections.length}`, 150, 25)
 
         // Table Data
         const tableData = inspections.map(ins => {
@@ -291,11 +297,11 @@ export const generateReportPDF = (inspections: ReportInspection[], title: string
         autoTable(doc, {
             head: [['Date', 'Client', 'Inspector', 'Score', 'Critical Issues', 'Status']],
             body: tableData,
-            startY: 45,
+            startY: 50,
             theme: 'grid',
-            headStyles: { fillColor: [0, 0, 0] }, // Black header
-            alternateRowStyles: { fillColor: [245, 245, 245] },
-            styles: { fontSize: 9 },
+            headStyles: { fillColor: [26, 26, 26], textColor: [255, 255, 255], fontStyle: 'bold' },
+            alternateRowStyles: { fillColor: [249, 250, 251] },
+            styles: { fontSize: 9, cellPadding: 3 },
             didParseCell: function (data) {
                 // Highlight Score
                 if (data.section === 'body' && data.column.index === 3) {
@@ -326,4 +332,62 @@ export const generateReportPDF = (inspections: ReportInspection[], title: string
         console.error('PDF Generation Error:', error)
         alert('Failed to generate PDF report. Please check console for details.')
     }
+}
+
+export const generateClientListPDF = (clients: any[], title: string) => {
+    const doc = new jsPDF()
+
+    // Title Header
+    doc.setFillColor(26, 26, 26) // Dark Background
+    doc.rect(0, 0, 210, 40, 'F')
+    doc.setFontSize(22)
+    doc.setTextColor(255, 255, 255)
+    doc.text(title, 14, 25)
+
+    doc.setFontSize(10)
+    doc.setTextColor(200, 200, 200)
+    doc.text(`Generated: ${format(new Date(), 'PPpp')}`, 14, 35)
+
+    // Table
+    const tableData = clients.map(client => [
+        client.name,
+        client.type,
+        client.address,
+        client.phone || '-',
+        client.email || '-',
+        client.next_inspection_date ? format(new Date(client.next_inspection_date), 'MMM dd, yyyy') : 'Not Scheduled'
+    ])
+
+    autoTable(doc, {
+        head: [['Name', 'Type', 'Address', 'Phone', 'Email', 'Next Inspection']],
+        body: tableData,
+        startY: 50,
+        theme: 'grid',
+        headStyles: { fillColor: [26, 26, 26], textColor: [255, 255, 255], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [249, 250, 251] },
+        styles: { fontSize: 9, cellPadding: 3 },
+        columnStyles: {
+            0: { fontStyle: 'bold', cellWidth: 40 }, // Name
+            2: { cellWidth: 50 }, // Address
+        },
+        didParseCell: function (data) {
+            // Highlight Next Inspection
+            if (data.section === 'body' && data.column.index === 5) {
+                const text = data.cell.raw as string
+                if (text !== 'Not Scheduled') {
+                    const date = new Date(text)
+                    const today = new Date()
+                    if (date < today) {
+                        data.cell.styles.textColor = [220, 38, 38] // Red for overdue
+                        data.cell.styles.fontStyle = 'bold'
+                    } else if (date < new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)) {
+                        data.cell.styles.textColor = [234, 88, 12] // Orange for upcoming
+                    }
+                }
+            }
+        }
+    })
+
+    const filename = `${title.toLowerCase().replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`
+    doc.save(filename)
 }
