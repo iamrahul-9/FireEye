@@ -655,10 +655,10 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                                                 )}
 
                                                 {/* Dynamic Single Line for Floor Inspection */}
-                                                <div className="flex flex-col xl:flex-row gap-4 items-start xl:items-center bg-gray-50/50 dark:bg-white/5 p-4 rounded-xl border border-gray-100 dark:border-white/10">
+                                                <div className="flex flex-col gap-4 bg-gray-50/50 dark:bg-white/5 p-4 rounded-xl border border-gray-100 dark:border-white/10">
 
                                                     {/* 1. Fire Extinguisher (Status & Types) */}
-                                                    <div className={`flex-1 min-w-[300px] ${!floor.hydrant ? 'w-full' : ''}`}>
+                                                    <div className="w-full">
                                                         <div className="flex flex-col gap-3">
                                                             <div className="flex items-center gap-2 mb-1">
                                                                 <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
@@ -667,7 +667,7 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
 
                                                             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center w-full">
                                                                 {/* Status */}
-                                                                <div className={`transition-all duration-300 ${floor.extinguisher.status === 'Not Available' ? 'flex-1 w-full' : 'min-w-[160px] w-[160px]'}`}>
+                                                                <div className="w-full sm:w-auto sm:min-w-[160px]">
                                                                     <select
                                                                         className="liquid-input w-full text-xs py-2 h-10 leading-relaxed"
                                                                         value={floor.extinguisher.status}
@@ -820,7 +820,7 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                                                             <div className="w-px h-12 bg-gray-200 dark:bg-white/10 hidden xl:block"></div>
 
                                                             {/* Hydrant Valve */}
-                                                            <div className="min-w-[180px]">
+                                                            <div className="w-full sm:w-auto sm:min-w-[150px]">
                                                                 <label className="text-[10px] font-bold uppercase text-gray-400 mb-1 block">Hydrant Valve</label>
                                                                 <select
                                                                     className="liquid-input w-full text-xs py-2 h-10 leading-relaxed"
@@ -839,7 +839,7 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                                                             </div>
 
                                                             {/* Hose Reel */}
-                                                            <div className="min-w-[180px]">
+                                                            <div className="w-full sm:w-auto sm:min-w-[150px]">
                                                                 <label className="text-[10px] font-bold uppercase text-gray-400 mb-1 block">Hose Reel Drum</label>
                                                                 <select
                                                                     className="liquid-input w-full text-xs py-2 h-10 leading-relaxed"
@@ -1038,20 +1038,20 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                                 <table className="w-full text-sm text-left">
                                     <thead className="bg-gray-50 dark:bg-white/5 border-b border-gray-100 dark:border-white/10">
                                         <tr>
-                                            <th className="px-6 py-4 font-bold">Equipment</th>
-                                            <th className="px-6 py-4 font-bold">Status</th>
-                                            <th className="px-6 py-4 font-bold">Pressure / Remarks</th>
+                                            <th className="px-3 sm:px-6 py-3 font-bold">Equipment</th>
+                                            <th className="px-3 sm:px-6 py-3 font-bold">Status</th>
+                                            <th className="px-3 sm:px-6 py-3 font-bold">Pressure / Remarks</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100 dark:divide-white/5">
                                         {/* Systems (including Custom) */}
                                         {data.systems.map((system, idx) => (
                                             <tr key={`sys-${idx}`} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
-                                                <td className="px-6 py-4 font-medium flex items-center gap-2">
+                                                <td className="px-3 sm:px-6 py-3 font-medium flex items-center gap-2">
                                                     <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
                                                     {system.name}
                                                 </td>
-                                                <td className="px-6 py-4">
+                                                <td className="px-3 sm:px-6 py-3">
                                                     <select
                                                         className="liquid-input w-full text-sm py-2"
                                                         value={system.status}
@@ -1080,7 +1080,7 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td className="px-6 py-4">
+                                                <td className="px-3 sm:px-6 py-3">
                                                     <input
                                                         type="text"
                                                         className="liquid-input w-full text-sm py-2"
@@ -1099,11 +1099,11 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                                         {/* Pumps */}
                                         {data.pumps.map((pump, idx) => (
                                             <tr key={`pump-${idx}`} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
-                                                <td className="px-6 py-4 font-medium flex items-center gap-2">
+                                                <td className="px-3 sm:px-6 py-3 font-medium flex items-center gap-2">
                                                     <div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div>
                                                     {pump.name}
                                                 </td>
-                                                <td className="px-6 py-4">
+                                                <td className="px-3 sm:px-6 py-3">
                                                     <select
                                                         className="liquid-input w-full text-sm py-2"
                                                         value={pump.status}
