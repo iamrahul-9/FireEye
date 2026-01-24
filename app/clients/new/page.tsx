@@ -33,6 +33,9 @@ interface ClientForm {
     rooms: string[]
     systems: string[]
     next_inspection_date?: string
+    // Fire Safety Config
+    riser_count: number
+    extinguisher_pattern: 'Lobby Only' | 'Staircase Only' | 'Both'
 }
 
 const DEFAULT_ROOMS = ['Lift Room', 'Meter Room', 'Pump Room', 'Electrical Panel / Electrical Room', 'Server Room']
@@ -63,7 +66,9 @@ export default function NewClientPage() {
         hasRefugeArea: false,
         refugeFloors: [],
         rooms: [...DEFAULT_ROOMS],
-        systems: OPTIONAL_SYSTEMS // Default to all systems selected
+        systems: OPTIONAL_SYSTEMS, // Default to all systems selected
+        riser_count: 1,
+        extinguisher_pattern: 'Both'
     })
 
     const [customRoom, setCustomRoom] = useState('')
@@ -202,7 +207,9 @@ export default function NewClientPage() {
                     rooms: form.rooms,
                     systems: form.systems,
                     has_refuge_area: form.hasRefugeArea,
-                    refuge_floors: form.refugeFloors
+                    refuge_floors: form.refugeFloors,
+                    riser_count: form.riser_count,
+                    extinguisher_pattern: form.extinguisher_pattern
                 }
             })
 
@@ -500,6 +507,60 @@ export default function NewClientPage() {
                                     <p className="text-xs text-gray-500">Refuge areas are typically on upper residential floors (e.g. 7th, 14th...). Basements and Podiums excluded.</p>
                                 </div>
                             )}
+                        </div>
+
+                        {/* Fire Safety Configuration */}
+                        <div className="pt-6 border-t border-gray-100 dark:border-white/10">
+                            <h3 className="text-sm font-bold uppercase tracking-wider mb-4 text-gray-500">Fire Safety Configuration</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Riser Count */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">
+                                        Number of Fire Risers
+                                    </label>
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setForm(f => ({ ...f, riser_count: Math.max(1, f.riser_count - 1) }))}
+                                            className="w-10 h-10 rounded-lg border border-gray-200 dark:border-white/10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+                                        >
+                                            <span className="text-xl font-bold">−</span>
+                                        </button>
+                                        <span className="w-12 text-center text-2xl font-bold">{form.riser_count}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setForm(f => ({ ...f, riser_count: f.riser_count + 1 }))}
+                                            className="w-10 h-10 rounded-lg border border-gray-200 dark:border-white/10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+                                        >
+                                            <span className="text-xl font-bold">+</span>
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-2">Each riser has Sprinkler, Hydrant Valve, and Hose Reel</p>
+                                </div>
+
+                                {/* Extinguisher Pattern */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">
+                                        Fire Extinguisher Locations
+                                    </label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {(['Lobby Only', 'Staircase Only', 'Both'] as const).map(pattern => (
+                                            <button
+                                                key={pattern}
+                                                type="button"
+                                                onClick={() => setForm(f => ({ ...f, extinguisher_pattern: pattern }))}
+                                                className={`px-4 py-2 rounded-lg border transition-all ${form.extinguisher_pattern === pattern
+                                                    ? 'bg-primary text-white border-primary'
+                                                    : 'border-gray-200 dark:border-white/10 hover:border-primary/50'
+                                                    }`}
+                                            >
+                                                {pattern}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-2">Where extinguishers are located on each floor</p>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Preview */}

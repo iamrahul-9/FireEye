@@ -687,9 +687,12 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                                                                 <div className="w-full sm:w-auto sm:min-w-[140px]">
                                                                     <select
                                                                         className="liquid-input w-full text-xs py-2 h-10 leading-relaxed"
-                                                                        value={floor.extinguisher.status}
+                                                                        value={floor.extinguisher?.status || 'OK'}
                                                                         onChange={e => {
                                                                             const newFloors = [...data.floors]
+                                                                            if (!newFloors[idx].extinguisher) {
+                                                                                newFloors[idx].extinguisher = { status: 'OK', types: { 'ABC': 1 }, location: 'Lobby' }
+                                                                            }
                                                                             newFloors[idx].extinguisher.status = e.target.value as any
                                                                             setData({ ...data, floors: newFloors })
                                                                         }}
@@ -701,11 +704,11 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                                                                     </select>
 
                                                                     {/* Photo Upload for Extinguisher */}
-                                                                    {floor.extinguisher.status !== 'OK' && floor.extinguisher.status !== 'Not Available' && (
+                                                                    {floor.extinguisher?.status !== 'OK' && floor.extinguisher?.status !== 'Not Available' && (
                                                                         <div className="mt-2">
                                                                             <PhotoUpload
                                                                                 required={true}
-                                                                                currentUrl={floor.extinguisher.photo_url}
+                                                                                currentUrl={floor.extinguisher?.photo_url}
                                                                                 onUpload={(url) => {
                                                                                     const newFloors = [...data.floors]
                                                                                     newFloors[idx].extinguisher.photo_url = url
@@ -717,12 +720,12 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                                                                 </div>
 
                                                                 {/* Location */}
-                                                                {floor.extinguisher.status !== 'Not Available' && (
+                                                                {floor.extinguisher?.status !== 'Not Available' && (
                                                                     <div className="w-full sm:w-auto sm:min-w-[120px]">
                                                                         <label className="text-[10px] font-bold uppercase text-gray-400 mb-1 block">Location</label>
                                                                         <select
                                                                             className="liquid-input w-full text-xs py-2 h-10 leading-relaxed"
-                                                                            value={floor.extinguisher.location}
+                                                                            value={floor.extinguisher?.location || 'Lobby'}
                                                                             onChange={e => {
                                                                                 const newFloors = [...data.floors]
                                                                                 newFloors[idx].extinguisher.location = e.target.value as any
@@ -737,11 +740,11 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                                                                 )}
 
                                                                 {/* Types */}
-                                                                {floor.extinguisher.status !== 'Not Available' && (
+                                                                {floor.extinguisher?.status !== 'Not Available' && (
                                                                     <div className="flex-1 flex flex-wrap items-center gap-2">
                                                                         <div className="h-8 w-px bg-gray-200 dark:bg-white/10 hidden sm:block mx-1"></div>
                                                                         {['ABC', 'CO2'].map((type) => {
-                                                                            const count = floor.extinguisher.types?.[type as ExtinguisherType] || 0
+                                                                            const count = floor.extinguisher?.types?.[type as ExtinguisherType] || 0
                                                                             const isSelected = count > 0
 
                                                                             return (
@@ -750,7 +753,7 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                                                                                         checked={isSelected}
                                                                                         onCheckedChange={(checked) => {
                                                                                             const newFloors = [...data.floors]
-                                                                                            const newTypes = { ...floor.extinguisher.types }
+                                                                                            const newTypes = { ...floor.extinguisher?.types }
                                                                                             if (checked) {
                                                                                                 newTypes[type as ExtinguisherType] = 1
                                                                                             } else {
