@@ -13,6 +13,7 @@ import PhotoUpload from '@/components/PhotoUpload'
 import { generateInspectionSummary } from '@/lib/smartSummary'
 import { calculateNextInspectionDate } from '@/lib/scheduling'
 import { sendAssignmentEmailAction, sendCriticalAlertAction } from '@/app/actions'
+import FloorInspectionCard from './FloorInspectionCard'
 
 // --- Types ---
 
@@ -30,39 +31,53 @@ type Client = {
         rooms: string[]
         systems: string[]
         refuge_floors?: string[]
+        riser_count?: number
+        extinguisher_pattern?: 'Lobby Only' | 'Staircase Only' | 'Both'
     }
 }
 
 export type ExtinguisherType = 'ABC' | 'CO2' | 'ABC Modular' | 'Clean Agent' | 'Clean Agent Modular' | 'FM-200' | 'Water Type'
 
-export type FloorData = {
+// Extinguisher data per location (Lobby or Staircase)
+export type ExtinguisherData = {
+    location: 'Lobby' | 'Staircase'
+    status: 'Okay' | 'Pressure Low' | 'Expired' | 'Not Available'
+    types: Partial<Record<ExtinguisherType, number>>
+    photo_url?: string
+}
+
+// Riser data - each riser has sprinkler, hydrant valve, and hose reel
+export type RiserData = {
     name: string
-    extinguisher: {
-        status: 'OK' | 'Pressure Low' | 'Expired' | 'Not Available'
-        types: Partial<Record<ExtinguisherType, number>>
-        location: 'Lobby' | 'Staircase' | 'Both'
+    sprinkler: {
+        status: 'Okay' | 'Butterfly Valve Shutoff' | 'Pressure Low' | 'Fire Duct Obstructed'
         photo_url?: string
     }
-    hydrant?: {
-        valve: 'OK' | 'Leaking' | 'Jam' | 'Lugs / Wheel Missing' | 'N/A',
-        valve_photo_url?: string
-        hose: 'OK' | 'Leaking' | 'Jammed / Stuck' | 'Damaged' | 'Missing' | 'Not Available' | 'N/A'
-        hose_photo_url?: string
+    hydrant_valve: {
+        status: 'Okay' | 'Leaking' | 'Jammed' | 'Lugs / Wheel Missing' | 'Not Available'
+        photo_url?: string
     }
-    sprinkler?: { status: 'OK' | 'Leaking' | 'Painted' | 'N/A', photo_url?: string }
-    alarm?: { status: 'OK' | 'Fault' | 'N/A', photo_url?: string }
-    refuge_area?: { status: 'Empty' | 'Obstructed / Occupied', photo_url?: string }
-    // New fields
-    fire_alarm?: {
-        status: 'OK' | 'Not Okay'
+    hose_reel: {
+        status: 'Okay' | 'Leaking' | 'Jammed / Stuck' | 'Damaged' | 'Missing' | 'Not Available'
+        photo_url?: string
+    }
+}
+
+export type FloorData = {
+    name: string
+    // Array of extinguishers - one per location (Lobby, Staircase, or Both)
+    extinguishers: ExtinguisherData[]
+    // Fire Alarm MCP & Panel
+    fire_alarm: {
+        status: 'Okay' | 'Not Okay'
         note?: string
+        photo_url?: string
     }
-    riser_count: number
-    riser_issues?: {
-        butterfly_valve_shutoff: boolean
-        sprinkler_broken: boolean
-        pressure_low: boolean
-        fire_duct_obstructed: boolean
+    // Array of risers - each has sprinkler, hydrant valve, hose reel
+    risers: RiserData[]
+    // Refuge area (if applicable)
+    refuge_area?: {
+        status: 'Empty' | 'Obstructed / Occupied'
         photo_url?: string
     }
 }
@@ -120,45 +135,39 @@ const calculateCompliance = (data: InspectionData) => {
     let obtainedWeight = 0
     let criticalCount = 0
 
-    // 1. Floors (Extinguishers, Hydrants, Sprinklers, Alarms)
+    // 1. Floors (Extinguishers, Fire Alarm, Risers, Refuge Area)
     data.floors.forEach(f => {
-        // Extinguisher (Weight 3)
-        totalWeight += WEIGHTS['Fire Extinguisher']
-        if (f.extinguisher.status === 'OK') obtainedWeight += WEIGHTS['Fire Extinguisher']
-        if (f.extinguisher.status === 'Expired' || f.extinguisher.status === 'Not Available') criticalCount++
+        // Extinguishers (Weight 3 total, distributed among all extinguishers)
+        const extWeight = WEIGHTS['Fire Extinguisher'] / (f.extinguishers.length || 1)
+        f.extinguishers.forEach(ext => {
+            totalWeight += extWeight
+            if (ext.status === 'Okay') obtainedWeight += extWeight
+            if (ext.status === 'Expired' || ext.status === 'Not Available') criticalCount++
+        })
 
-        // Hydrant (Weight 3)
-        if (f.hydrant) {
-            // Check Valve
-            if (f.hydrant.valve) {
-                totalWeight += (WEIGHTS['Hydrant System'] / 2)
-                if (f.hydrant.valve === 'OK') obtainedWeight += (WEIGHTS['Hydrant System'] / 2)
-                if (f.hydrant.valve === 'Leaking' || f.hydrant.valve === 'Jam' || f.hydrant.valve === 'Lugs / Wheel Missing') criticalCount++
-            }
+        // Fire Alarm (Weight 5)
+        totalWeight += WEIGHTS['Fire Alarm System']
+        if (f.fire_alarm.status === 'Okay') obtainedWeight += WEIGHTS['Fire Alarm System']
+        if (f.fire_alarm.status === 'Not Okay') criticalCount++
 
-            // Check Hose Reel Drum
-            if (f.hydrant.hose) {
-                totalWeight += (WEIGHTS['Hydrant System'] / 2)
-                if (f.hydrant.hose === 'OK') obtainedWeight += (WEIGHTS['Hydrant System'] / 2)
-                if (['Leaking', 'Jammed / Stuck', 'Damaged'].includes(f.hydrant.hose)) {
-                    criticalCount++
-                }
-            }
-        }
+        // Risers - each has sprinkler, hydrant valve, hose reel
+        const riserWeight = (WEIGHTS['Hydrant System'] + WEIGHTS['Sprinkler System']) / (f.risers.length || 1)
+        f.risers.forEach(riser => {
+            // Sprinkler (1/3 of riser weight)
+            totalWeight += riserWeight / 3
+            if (riser.sprinkler.status === 'Okay') obtainedWeight += riserWeight / 3
+            if (riser.sprinkler.status !== 'Okay') criticalCount++
 
-        // Sprinkler (Weight 4)
-        if (f.sprinkler && f.sprinkler.status !== 'N/A') {
-            totalWeight += WEIGHTS['Sprinkler System']
-            if (f.sprinkler.status === 'OK') obtainedWeight += WEIGHTS['Sprinkler System']
-            if (f.sprinkler.status === 'Leaking') criticalCount++
-        }
+            // Hydrant Valve (1/3 of riser weight)
+            totalWeight += riserWeight / 3
+            if (riser.hydrant_valve.status === 'Okay') obtainedWeight += riserWeight / 3
+            if (riser.hydrant_valve.status !== 'Okay' && riser.hydrant_valve.status !== 'Not Available') criticalCount++
 
-        // Alarm (Weight 5)
-        if (f.alarm && f.alarm.status !== 'N/A') {
-            totalWeight += WEIGHTS['Fire Alarm System']
-            if (f.alarm.status === 'OK') obtainedWeight += WEIGHTS['Fire Alarm System']
-            if (f.alarm.status === 'Fault') criticalCount++
-        }
+            // Hose Reel (1/3 of riser weight)
+            totalWeight += riserWeight / 3
+            if (riser.hose_reel.status === 'Okay') obtainedWeight += riserWeight / 3
+            if (riser.hose_reel.status !== 'Okay' && riser.hose_reel.status !== 'Not Available') criticalCount++
+        })
 
         // Refuge Area
         if (f.refuge_area) {
@@ -259,16 +268,39 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
             const refugeFloors = structure.refuge_floors || []
 
             // 1. Floors
+            const riserCount = structure.riser_count || 1
+            const extPattern = structure.extinguisher_pattern || 'Lobby Only'
+            
+            // Generate extinguishers based on pattern
+            const generateExtinguishers = (): ExtinguisherData[] => {
+                if (extPattern === 'Both') {
+                    return [
+                        { location: 'Lobby', status: 'Okay', types: { 'ABC': 1 } },
+                        { location: 'Staircase', status: 'Okay', types: { 'ABC': 1 } }
+                    ]
+                } else if (extPattern === 'Staircase Only') {
+                    return [{ location: 'Staircase', status: 'Okay', types: { 'ABC': 1 } }]
+                } else {
+                    return [{ location: 'Lobby', status: 'Okay', types: { 'ABC': 1 } }]
+                }
+            }
+            
+            // Generate risers based on count
+            const generateRisers = (): RiserData[] => {
+                return Array.from({ length: riserCount }, (_, i) => ({
+                    name: riserCount === 1 ? 'Riser Status' : `Riser ${i + 1}`,
+                    sprinkler: { status: 'Okay' },
+                    hydrant_valve: { status: 'Okay' },
+                    hose_reel: { status: 'Okay' }
+                }))
+            }
+            
             const floors: FloorData[] = (structure.structure_map || []).map(floor => ({
                 name: floor,
-                extinguisher: { status: 'OK', types: { 'ABC': 1 }, location: 'Lobby' },
-                hydrant: undefined,
-                sprinkler: undefined,
-                alarm: undefined,
-                refuge_area: refugeFloors.includes(floor) ? { status: 'Empty' } : undefined,
-                fire_alarm: { status: 'OK' },
-                riser_count: 1,
-                riser_issues: undefined
+                extinguishers: generateExtinguishers(),
+                fire_alarm: { status: 'Okay' },
+                risers: generateRisers(),
+                refuge_area: refugeFloors.includes(floor) ? { status: 'Empty' } : undefined
             }))
 
             // 2. Rooms
@@ -316,20 +348,8 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                 )
             }
 
-            // Enable optional fields in floors based on systems
-            const hasHydrant = structure.systems?.includes('Hydrant Valve') || structure.systems?.includes('Hose Reel Drum')
-            const hasSprinkler = structure.systems?.includes('Sprinkler System')
-            const hasAlarm = structure.systems?.includes('Fire Alarm System')
-
-            if (hasHydrant) {
-                floors.forEach(f => f.hydrant = { valve: 'OK', hose: 'OK' })
-            }
-            if (hasSprinkler) {
-                floors.forEach(f => f.sprinkler = { status: 'OK' })
-            }
-            if (hasAlarm) {
-                floors.forEach(f => f.alarm = { status: 'OK' })
-            }
+            // Note: Risers and extinguishers are now pre-configured during floor initialization
+            // based on client's riser_count and extinguisher_pattern settings
 
             setData({ floors, rooms, systems, pumps, remarks: '' })
 
@@ -377,15 +397,36 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
 
         // Floors
         data.floors.forEach(f => {
-            if (f.extinguisher.status !== 'OK' && f.extinguisher.status !== 'Not Available' && !f.extinguisher.photo_url) missingPhotos.push(`${f.name}: Extinguisher (${f.extinguisher.status})`)
-
-            if (f.hydrant) {
-                if (f.hydrant.valve !== 'OK' && f.hydrant.valve !== 'N/A' && !f.hydrant.valve_photo_url) missingPhotos.push(`${f.name}: Hydrant Valve (${f.hydrant.valve})`)
-                if (f.hydrant.hose !== 'OK' && f.hydrant.hose !== 'N/A' && f.hydrant.hose !== 'Not Available' && !f.hydrant.hose_photo_url) missingPhotos.push(`${f.name}: Hose Reel (${f.hydrant.hose})`)
+            // Extinguishers
+            f.extinguishers.forEach(ext => {
+                if (ext.status !== 'Okay' && ext.status !== 'Not Available' && !ext.photo_url) {
+                    missingPhotos.push(`${f.name}: Extinguisher ${ext.location} (${ext.status})`)
+                }
+            })
+            
+            // Fire Alarm
+            if (f.fire_alarm.status !== 'Okay' && !f.fire_alarm.photo_url) {
+                missingPhotos.push(`${f.name}: Fire Alarm (${f.fire_alarm.status})`)
             }
-            if (f.sprinkler && f.sprinkler.status !== 'OK' && f.sprinkler.status !== 'N/A' && !f.sprinkler.photo_url) missingPhotos.push(`${f.name}: Sprinkler (${f.sprinkler.status})`)
-            if (f.alarm && f.alarm.status !== 'OK' && f.alarm.status !== 'N/A' && !f.alarm.photo_url) missingPhotos.push(`${f.name}: Alarm (${f.alarm.status})`)
-            if (f.refuge_area && f.refuge_area.status !== 'Empty' && !f.refuge_area.photo_url) missingPhotos.push(`${f.name}: Refuge Area (${f.refuge_area.status})`)
+            
+            // Risers
+            f.risers.forEach((riser, i) => {
+                const riserName = f.risers.length === 1 ? 'Riser' : `Riser ${i + 1}`
+                if (riser.sprinkler.status !== 'Okay' && !riser.sprinkler.photo_url) {
+                    missingPhotos.push(`${f.name}: ${riserName} Sprinkler (${riser.sprinkler.status})`)
+                }
+                if (riser.hydrant_valve.status !== 'Okay' && riser.hydrant_valve.status !== 'Not Available' && !riser.hydrant_valve.photo_url) {
+                    missingPhotos.push(`${f.name}: ${riserName} Hydrant Valve (${riser.hydrant_valve.status})`)
+                }
+                if (riser.hose_reel.status !== 'Okay' && riser.hose_reel.status !== 'Not Available' && !riser.hose_reel.photo_url) {
+                    missingPhotos.push(`${f.name}: ${riserName} Hose Reel (${riser.hose_reel.status})`)
+                }
+            })
+            
+            // Refuge Area
+            if (f.refuge_area && f.refuge_area.status !== 'Empty' && !f.refuge_area.photo_url) {
+                missingPhotos.push(`${f.name}: Refuge Area (${f.refuge_area.status})`)
+            }
         })
 
         // Pumps
@@ -620,458 +661,15 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                                     >
                                         <div className="overflow-hidden">
                                             <div className="p-4 space-y-6">
-                                                {/* Refuge Area Inspection */}
-                                                {floor.refuge_area && (
-                                                    <div className="bg-green-500/5 border border-green-500/20 p-4 rounded-xl mb-4">
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <h4 className="font-bold text-green-600 dark:text-green-400 flex items-center gap-2">
-                                                                <Shield className="h-5 w-5" /> Refuge Area Inspection
-                                                            </h4>
-                                                        </div>
-                                                        <div className="grid grid-cols-1">
-                                                            <div>
-                                                                <label className="text-xs font-bold uppercase text-gray-400 mb-1 block">Accessibility Status</label>
-                                                                <select
-                                                                    className={`liquid-input w-full text-sm font-medium ${floor.refuge_area.status !== 'Empty'
-                                                                        ? 'border-red-500 bg-red-50 text-red-600'
-                                                                        : 'border-green-500/30'
-                                                                        }`}
-                                                                    value={floor.refuge_area.status}
-                                                                    onChange={e => {
-                                                                        const newFloors = [...data.floors]
-                                                                        newFloors[idx].refuge_area!.status = e.target.value as any
-                                                                        setData({ ...data, floors: newFloors })
-                                                                    }}
-                                                                >
-                                                                    <option value="Empty">Empty</option>
-                                                                    <option value="Obstructed / Occupied">Obstructed / Occupied</option>
-                                                                </select>
-                                                                {floor.refuge_area.status !== 'Empty' && (
-                                                                    <p className="text-xs text-red-500 mt-2 font-bold flex items-center gap-1">
-                                                                        <AlertTriangle className="h-3 w-3" /> Critical Failure: Refuge Area must be accessible always.
-                                                                    </p>
-                                                                )}
 
-                                                                {floor.refuge_area.status !== 'Empty' && (
-                                                                    <div className="mt-3">
-                                                                        <PhotoUpload
-                                                                            required={true}
-                                                                            label="Proof of Obstruction"
-                                                                            currentUrl={floor.refuge_area.photo_url}
-                                                                            onUpload={(url) => {
-                                                                                const newFloors = [...data.floors]
-                                                                                newFloors[idx].refuge_area!.photo_url = url
-                                                                                setData({ ...data, floors: newFloors })
-                                                                            }}
-                                                                        />
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
 
-                                                {/* Dynamic Single Line for Floor Inspection */}
-                                                <div className="flex flex-col gap-4 bg-gray-50/50 dark:bg-white/5 p-4 rounded-xl border border-gray-100 dark:border-white/10">
-
-                                                    {/* 1. Fire Extinguisher (Status & Types) */}
-                                                    <div className="w-full">
-                                                        <div className="flex flex-col gap-3">
-                                                            <div className="flex items-center gap-2 mb-1">
-                                                                <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
-                                                                <h4 className="text-xs font-bold uppercase text-gray-500 whitespace-nowrap">Fire Extinguisher</h4>
-                                                            </div>
-
-                                                            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center w-full">
-                                                                {/* Status */}
-                                                                <div className="w-full sm:w-auto sm:min-w-[140px]">
-                                                                    <select
-                                                                        className="liquid-input w-full text-xs py-2 h-10 leading-relaxed"
-                                                                        value={floor.extinguisher?.status || 'OK'}
-                                                                        onChange={e => {
-                                                                            const newFloors = [...data.floors]
-                                                                            if (!newFloors[idx].extinguisher) {
-                                                                                newFloors[idx].extinguisher = { status: 'OK', types: { 'ABC': 1 }, location: 'Lobby' }
-                                                                            }
-                                                                            newFloors[idx].extinguisher.status = e.target.value as any
-                                                                            setData({ ...data, floors: newFloors })
-                                                                        }}
-                                                                    >
-                                                                        <option value="OK">OK</option>
-                                                                        <option value="Pressure Low">Pressure Low</option>
-                                                                        <option value="Expired">Expired</option>
-                                                                        <option value="Not Available">Not Available</option>
-                                                                    </select>
-
-                                                                    {/* Photo Upload for Extinguisher */}
-                                                                    {floor.extinguisher?.status !== 'OK' && floor.extinguisher?.status !== 'Not Available' && (
-                                                                        <div className="mt-2">
-                                                                            <PhotoUpload
-                                                                                required={true}
-                                                                                currentUrl={floor.extinguisher?.photo_url}
-                                                                                onUpload={(url) => {
-                                                                                    const newFloors = [...data.floors]
-                                                                                    newFloors[idx].extinguisher.photo_url = url
-                                                                                    setData({ ...data, floors: newFloors })
-                                                                                }}
-                                                                            />
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-
-                                                                {/* Location */}
-                                                                {floor.extinguisher?.status !== 'Not Available' && (
-                                                                    <div className="w-full sm:w-auto sm:min-w-[120px]">
-                                                                        <label className="text-[10px] font-bold uppercase text-gray-400 mb-1 block">Location</label>
-                                                                        <select
-                                                                            className="liquid-input w-full text-xs py-2 h-10 leading-relaxed"
-                                                                            value={floor.extinguisher?.location || 'Lobby'}
-                                                                            onChange={e => {
-                                                                                const newFloors = [...data.floors]
-                                                                                newFloors[idx].extinguisher.location = e.target.value as any
-                                                                                setData({ ...data, floors: newFloors })
-                                                                            }}
-                                                                        >
-                                                                            <option value="Lobby">Lobby</option>
-                                                                            <option value="Staircase">Staircase</option>
-                                                                            <option value="Both">Both</option>
-                                                                        </select>
-                                                                    </div>
-                                                                )}
-
-                                                                {/* Types */}
-                                                                {floor.extinguisher?.status !== 'Not Available' && (
-                                                                    <div className="flex-1 flex flex-wrap items-center gap-2">
-                                                                        <div className="h-8 w-px bg-gray-200 dark:bg-white/10 hidden sm:block mx-1"></div>
-                                                                        {['ABC', 'CO2'].map((type) => {
-                                                                            const count = floor.extinguisher?.types?.[type as ExtinguisherType] || 0
-                                                                            const isSelected = count > 0
-
-                                                                            return (
-                                                                                <div key={type} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all h-9 ${isSelected ? 'border-primary bg-primary/5' : 'border-gray-200 dark:border-white/10 bg-white dark:bg-black/20'}`}>
-                                                                                    <LiquidCheckbox
-                                                                                        checked={isSelected}
-                                                                                        onCheckedChange={(checked) => {
-                                                                                            const newFloors = [...data.floors]
-                                                                                            const newTypes = { ...floor.extinguisher?.types }
-                                                                                            if (checked) {
-                                                                                                newTypes[type as ExtinguisherType] = 1
-                                                                                            } else {
-                                                                                                delete newTypes[type as ExtinguisherType]
-                                                                                            }
-                                                                                            newFloors[idx].extinguisher.types = newTypes
-                                                                                            setData({ ...data, floors: newFloors })
-                                                                                        }}
-                                                                                    />
-                                                                                    <span className="text-xs font-bold whitespace-nowrap">{type}</span>
-
-                                                                                    {isSelected && (
-                                                                                        <>
-                                                                                            <div className="w-px h-3 bg-gray-300 dark:bg-white/20 mx-1"></div>
-                                                                                            <div className="flex items-center gap-1">
-                                                                                                <input
-                                                                                                    type="number"
-                                                                                                    min="1"
-                                                                                                    className="w-8 bg-transparent border-none text-center font-mono text-xs font-bold focus:ring-0 p-0"
-                                                                                                    value={count}
-                                                                                                    onChange={e => {
-                                                                                                        const val = parseInt(e.target.value) || 0
-                                                                                                        if (val > 0) {
-                                                                                                            const newFloors = [...data.floors]
-                                                                                                            newFloors[idx].extinguisher.types![type as ExtinguisherType] = val
-                                                                                                            setData({ ...data, floors: newFloors })
-                                                                                                        }
-                                                                                                    }}
-                                                                                                />
-                                                                                                <div className="flex flex-col -gap-1">
-                                                                                                    <button
-                                                                                                        onClick={(e) => {
-                                                                                                            e.preventDefault()
-                                                                                                            e.stopPropagation()
-                                                                                                            const newFloors = [...data.floors]
-                                                                                                            const current = newFloors[idx].extinguisher.types![type as ExtinguisherType] || 0
-                                                                                                            newFloors[idx].extinguisher.types![type as ExtinguisherType] = current + 1
-                                                                                                            setData({ ...data, floors: newFloors })
-                                                                                                        }}
-                                                                                                        className="text-gray-400 hover:text-primary transition-colors focus:outline-none"
-                                                                                                    >
-                                                                                                        <ChevronUp className="h-3 w-3" />
-                                                                                                    </button>
-                                                                                                    <button
-                                                                                                        onClick={(e) => {
-                                                                                                            e.preventDefault()
-                                                                                                            e.stopPropagation()
-                                                                                                            const newFloors = [...data.floors]
-                                                                                                            const current = newFloors[idx].extinguisher.types![type as ExtinguisherType] || 0
-                                                                                                            if (current > 1) {
-                                                                                                                newFloors[idx].extinguisher.types![type as ExtinguisherType] = current - 1
-                                                                                                                setData({ ...data, floors: newFloors })
-                                                                                                            }
-                                                                                                        }}
-                                                                                                        className="text-gray-400 hover:text-primary transition-colors focus:outline-none"
-                                                                                                    >
-                                                                                                        <ChevronDown className="h-3 w-3" />
-                                                                                                    </button>
-                                                                                                </div>
-                                                                                            </div>
-                                                                                        </>
-                                                                                    )}
-                                                                                </div>
-                                                                            )
-                                                                        })}
-                                                                        {/* Apply To All Button */}
-                                                                        <button
-                                                                            onClick={(e) => {
-                                                                                e.preventDefault()
-                                                                                e.stopPropagation()
-                                                                                setConfirmModal({
-                                                                                    isOpen: true,
-                                                                                    title: 'Apply Types to All Floors?',
-                                                                                    message: `This will verify and copy the current extinguisher types configuration (ABC: ${floor.extinguisher.types?.ABC || 0}, CO2: ${floor.extinguisher.types?.CO2 || 0}) to ALL ${data.floors.length} floors.`,
-                                                                                    onConfirm: () => {
-                                                                                        const currentTypes = { ...floor.extinguisher.types }
-                                                                                        const newFloors = data.floors.map(f => ({
-                                                                                            ...f,
-                                                                                            extinguisher: {
-                                                                                                ...f.extinguisher,
-                                                                                                types: { ...currentTypes }
-                                                                                            }
-                                                                                        }))
-                                                                                        setData({ ...data, floors: newFloors })
-                                                                                        showToast('Extinguisher types applied to all floors', 'success')
-                                                                                        setConfirmModal(prev => ({ ...prev, isOpen: false }))
-                                                                                    }
-                                                                                })
-                                                                            }}
-                                                                            className="ml-auto sm:ml-2 text-[10px] font-bold text-primary hover:text-primary/80 transition-colors uppercase flex items-center gap-1 bg-primary/5 hover:bg-primary/10 px-2 py-1 rounded-md border border-primary/10"
-                                                                            title="Apply types to all floors"
-                                                                        >
-                                                                            <CheckCircle className="h-3 w-3" /> All
-                                                                        </button>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* 2 & 3. Hydrant & Hose Reel (Conditional) */}
-                                                    {floor.hydrant && (
-                                                        <>
-                                                            <div className="w-px h-12 bg-gray-200 dark:bg-white/10 hidden xl:block"></div>
-
-                                                            {/* Hydrant Valve */}
-                                                            <div className="w-full sm:w-auto sm:min-w-[150px]">
-                                                                <label className="text-[10px] font-bold uppercase text-gray-400 mb-1 block">Hydrant Valve</label>
-                                                                <select
-                                                                    className="liquid-input w-full text-xs py-2 h-10 leading-relaxed"
-                                                                    value={floor.hydrant.valve as string}
-                                                                    onChange={e => {
-                                                                        const newFloors = [...data.floors]
-                                                                        newFloors[idx].hydrant!.valve = e.target.value as any
-                                                                        setData({ ...data, floors: newFloors })
-                                                                    }}
-                                                                >
-                                                                    <option value="OK">OK</option>
-                                                                    <option value="Leaking">Leaking</option>
-                                                                    <option value="Jam">Jam/Stuck</option>
-                                                                    <option value="Lugs / Wheel Missing">Lugs / Wheel Missing</option>
-                                                                </select>
-                                                                {/* Photo for Hydrant Valve issues */}
-                                                                {floor.hydrant.valve !== 'OK' && (
-                                                                    <div className="mt-2">
-                                                                        <PhotoUpload
-                                                                            required={true}
-                                                                            currentUrl={floor.hydrant.valve_photo_url}
-                                                                            onUpload={(url) => {
-                                                                                const newFloors = [...data.floors]
-                                                                                newFloors[idx].hydrant!.valve_photo_url = url
-                                                                                setData({ ...data, floors: newFloors })
-                                                                            }}
-                                                                        />
-                                                                    </div>
-                                                                )}
-                                                            </div>
-
-                                                            {/* Hose Reel */}
-                                                            <div className="w-full sm:w-auto sm:min-w-[150px]">
-                                                                <label className="text-[10px] font-bold uppercase text-gray-400 mb-1 block">Hose Reel Drum</label>
-                                                                <select
-                                                                    className="liquid-input w-full text-xs py-2 h-10 leading-relaxed"
-                                                                    value={floor.hydrant.hose as string}
-                                                                    onChange={e => {
-                                                                        const newFloors = [...data.floors]
-                                                                        newFloors[idx].hydrant!.hose = e.target.value as any
-                                                                        setData({ ...data, floors: newFloors })
-                                                                    }}
-                                                                >
-                                                                    <option value="OK">OK</option>
-                                                                    <option value="Leaking">Leaking</option>
-                                                                    <option value="Jammed / Stuck">Jammed / Stuck</option>
-                                                                    <option value="Damaged">Damaged</option>
-                                                                    <option value="Not Available">Not Available</option>
-                                                                </select>
-                                                                {/* Photo for Hose Reel issues */}
-                                                                {floor.hydrant.hose !== 'OK' && floor.hydrant.hose !== 'Not Available' && (
-                                                                    <div className="mt-2">
-                                                                        <PhotoUpload
-                                                                            required={true}
-                                                                            currentUrl={floor.hydrant.hose_photo_url}
-                                                                            onUpload={(url) => {
-                                                                                const newFloors = [...data.floors]
-                                                                                newFloors[idx].hydrant!.hose_photo_url = url
-                                                                                setData({ ...data, floors: newFloors })
-                                                                            }}
-                                                                        />
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </>
-                                                    )}
-                                                </div>
-
-                                                {/* Fire Alarm MCP & Panel Section */}
-                                                <div className="bg-yellow-500/5 border border-yellow-500/20 p-4 rounded-xl">
-                                                    <div className="flex items-center gap-2 mb-3">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-yellow-500"></div>
-                                                        <h4 className="text-xs font-bold uppercase text-gray-500">Fire Alarm (MCP & Panel)</h4>
-                                                    </div>
-                                                    <div className="flex flex-col sm:flex-row gap-4">
-                                                        <div className="w-full sm:w-auto sm:min-w-[120px]">
-                                                            <select
-                                                                className={`liquid-input w-full text-xs py-2 h-10 ${floor.fire_alarm?.status !== 'OK' ? 'border-red-500 bg-red-50' : ''}`}
-                                                                value={floor.fire_alarm?.status || 'OK'}
-                                                                onChange={e => {
-                                                                    const newFloors = [...data.floors]
-                                                                    newFloors[idx].fire_alarm = {
-                                                                        ...newFloors[idx].fire_alarm,
-                                                                        status: e.target.value as 'OK' | 'Not Okay'
-                                                                    }
-                                                                    setData({ ...data, floors: newFloors })
-                                                                }}
-                                                            >
-                                                                <option value="OK">OK</option>
-                                                                <option value="Not Okay">Not Okay</option>
-                                                            </select>
-                                                        </div>
-                                                        {floor.fire_alarm?.status === 'Not Okay' && (
-                                                            <div className="flex-1">
-                                                                <input
-                                                                    type="text"
-                                                                    className="liquid-input w-full text-xs py-2 h-10"
-                                                                    placeholder="Describe the issue..."
-                                                                    value={floor.fire_alarm?.note || ''}
-                                                                    onChange={e => {
-                                                                        const newFloors = [...data.floors]
-                                                                        newFloors[idx].fire_alarm = {
-                                                                            ...newFloors[idx].fire_alarm!,
-                                                                            note: e.target.value
-                                                                        }
-                                                                        setData({ ...data, floors: newFloors })
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                {/* Riser Section (only if sprinkler system exists) */}
-                                                {floor.sprinkler && (
-                                                    <div className="bg-blue-500/5 border border-blue-500/20 p-4 rounded-xl">
-                                                        <div className="flex items-center gap-2 mb-3">
-                                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                                                            <h4 className="text-xs font-bold uppercase text-gray-500">Riser / Sprinkler</h4>
-                                                        </div>
-                                                        <div className="flex flex-col sm:flex-row gap-4 items-start">
-                                                            {/* Riser Count */}
-                                                            <div className="w-full sm:w-auto">
-                                                                <label className="text-[10px] font-bold uppercase text-gray-400 mb-1 block">No. of Risers</label>
-                                                                <div className="flex items-center gap-2">
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.preventDefault()
-                                                                            if (floor.riser_count > 1) {
-                                                                                const newFloors = [...data.floors]
-                                                                                newFloors[idx].riser_count = floor.riser_count - 1
-                                                                                setData({ ...data, floors: newFloors })
-                                                                            }
-                                                                        }}
-                                                                        className="w-8 h-8 rounded-lg border border-gray-200 dark:border-white/10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/5"
-                                                                    >
-                                                                        <Minus className="h-4 w-4" />
-                                                                    </button>
-                                                                    <span className="w-8 text-center font-bold">{floor.riser_count}</span>
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.preventDefault()
-                                                                            const newFloors = [...data.floors]
-                                                                            newFloors[idx].riser_count = floor.riser_count + 1
-                                                                            setData({ ...data, floors: newFloors })
-                                                                        }}
-                                                                        className="w-8 h-8 rounded-lg border border-gray-200 dark:border-white/10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/5"
-                                                                    >
-                                                                        <Plus className="h-4 w-4" />
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Riser Issues Checkboxes */}
-                                                            <div className="flex-1">
-                                                                <label className="text-[10px] font-bold uppercase text-gray-400 mb-2 block">Issues (if any)</label>
-                                                                <div className="flex flex-wrap gap-2">
-                                                                    {[
-                                                                        { key: 'butterfly_valve_shutoff', label: 'Butterfly Valve Shutoff' },
-                                                                        { key: 'sprinkler_broken', label: 'Sprinkler Broken' },
-                                                                        { key: 'pressure_low', label: 'Pressure Low' },
-                                                                        { key: 'fire_duct_obstructed', label: 'Fire Duct Obstructed' }
-                                                                    ].map(issue => {
-                                                                        const isChecked = floor.riser_issues?.[issue.key as keyof typeof floor.riser_issues] === true
-                                                                        return (
-                                                                            <button
-                                                                                key={issue.key}
-                                                                                onClick={(e) => {
-                                                                                    e.preventDefault()
-                                                                                    const newFloors = [...data.floors]
-                                                                                    newFloors[idx].riser_issues = {
-                                                                                        ...newFloors[idx].riser_issues,
-                                                                                        butterfly_valve_shutoff: floor.riser_issues?.butterfly_valve_shutoff || false,
-                                                                                        sprinkler_broken: floor.riser_issues?.sprinkler_broken || false,
-                                                                                        pressure_low: floor.riser_issues?.pressure_low || false,
-                                                                                        fire_duct_obstructed: floor.riser_issues?.fire_duct_obstructed || false,
-                                                                                        [issue.key]: !isChecked
-                                                                                    }
-                                                                                    setData({ ...data, floors: newFloors })
-                                                                                }}
-                                                                                className={`px-3 py-1.5 rounded-lg text-xs border transition-all ${isChecked
-                                                                                    ? 'bg-red-500 text-white border-red-500'
-                                                                                    : 'border-gray-200 dark:border-white/10 hover:border-red-300'
-                                                                                    }`}
-                                                                            >
-                                                                                {issue.label}
-                                                                            </button>
-                                                                        )
-                                                                    })}
-                                                                </div>
-                                                                {/* Photo upload if any issue selected */}
-                                                                {(floor.riser_issues?.butterfly_valve_shutoff || floor.riser_issues?.sprinkler_broken || floor.riser_issues?.pressure_low || floor.riser_issues?.fire_duct_obstructed) && (
-                                                                    <div className="mt-3">
-                                                                        <PhotoUpload
-                                                                            required={true}
-                                                                            currentUrl={floor.riser_issues?.photo_url}
-                                                                            onUpload={(url) => {
-                                                                                const newFloors = [...data.floors]
-                                                                                newFloors[idx].riser_issues = {
-                                                                                    ...newFloors[idx].riser_issues!,
-                                                                                    photo_url: url
-                                                                                }
-                                                                                setData({ ...data, floors: newFloors })
-                                                                            }}
-                                                                        />
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
+                                                {/* Floor Inspection - Using new FloorInspectionCard component */}
+                                                <FloorInspectionCard
+                                                    floor={floor}
+                                                    floorIdx={idx}
+                                                    data={data}
+                                                    setData={setData}
+                                                />
                                             </div>
                                         </div>
                                     </div>
