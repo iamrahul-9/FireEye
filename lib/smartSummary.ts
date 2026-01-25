@@ -8,22 +8,26 @@ export const generateInspectionSummary = (data: InspectionData): string => {
     // --- 1. ANALYZE FLOORS ---
     data.floors.forEach(floor => {
         // Critical: Extinguisher Expired or Low Pressure
-        if (floor.extinguisher.status === 'Expired' || floor.extinguisher.status === 'Pressure Low') {
-            criticalIssues.push(`Fire extinguishers on ${floor.name} were found to be ${floor.extinguisher.status.toLowerCase()}.`)
-            isCompliant = false
-        }
+        floor.extinguishers.forEach(ext => {
+            if (ext.status === 'Expired' || ext.status === 'Pressure Low') {
+                criticalIssues.push(`Fire extinguishers (${ext.location}) on ${floor.name} were found to be ${ext.status.toLowerCase()}.`)
+                isCompliant = false
+            }
+        })
         // Critical: Hydrant Issues
-        if (floor.hydrant?.valve === 'Leaking' || floor.hydrant?.valve === 'Jam') {
-            criticalIssues.push(`Hydrant valves on ${floor.name} are ${floor.hydrant.valve.toLowerCase()}.`)
-            isCompliant = false
-        }
-        if (floor.hydrant?.hose === 'Damaged' || floor.hydrant?.hose === 'Missing') {
-            criticalIssues.push(`Hose reels on ${floor.name} are ${floor.hydrant.hose.toLowerCase()}.`)
-            isCompliant = false
-        }
+        floor.risers.forEach(riser => {
+            if (riser.hydrant_valve.status === 'Leaking' || riser.hydrant_valve.status === 'Jammed') {
+                criticalIssues.push(`Hydrant valve (${riser.name}) on ${floor.name} is ${riser.hydrant_valve.status.toLowerCase()}.`)
+                isCompliant = false
+            }
+            if (riser.hose_reel.status === 'Damaged' || riser.hose_reel.status === 'Missing') {
+                criticalIssues.push(`Hose reel (${riser.name}) on ${floor.name} is ${riser.hose_reel.status.toLowerCase()}.`)
+                isCompliant = false
+            }
+        })
         // Critical: Alarm Fault
-        if (floor.alarm?.status === 'Fault') {
-            criticalIssues.push(`Fire alarm system on ${floor.name} shows a fault condition.`)
+        if (floor.fire_alarm?.status === 'Not Okay') {
+            criticalIssues.push(`Fire alarm system on ${floor.name} reported as Not Okay.`)
             isCompliant = false
         }
         // Critical: Refuge Obstructed
