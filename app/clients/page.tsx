@@ -25,6 +25,7 @@ type Client = {
     email: string
     type: 'Office/Store' | 'Society/Residential'
     next_inspection_date?: string
+    structure?: any // JSONB column
 }
 
 export default function ClientsPage() {
@@ -128,7 +129,22 @@ export default function ClientsPage() {
             Phone: c.phone || 'N/A',
             Email: c.email || 'N/A',
             Type: c.type,
-            NextInspection: c.next_inspection_date ? new Date(c.next_inspection_date).toLocaleDateString() : 'N/A'
+            NextInspection: c.next_inspection_date ? new Date(c.next_inspection_date).toLocaleDateString() : 'N/A',
+            // Admin Details
+            Floors: c.structure?.floors || 0,
+            Basements: c.structure?.basements || 0,
+            Podiums: c.structure?.podiums || 0,
+            Pumps: Array.isArray(c.structure?.pumps) 
+                ? c.structure.pumps.map((p: any) => `${p.name} (${p.type} ${p.hp}HP)`).join('; ') 
+                : 'None',
+            Extinguishers_Total: Array.isArray(c.structure?.extinguishers)
+                ? c.structure.extinguishers.reduce((acc: number, curr: any) => acc + (Number(curr.quantity) || 0), 0)
+                : 0,
+            FireAlarm_Summary: c.structure?.fire_alarm 
+                ? `Panel:${c.structure.fire_alarm.panel_qty || 0}, Smoke:${c.structure.fire_alarm.smoke_detector_qty || 0}, MCP:${c.structure.fire_alarm.mcp_qty || 0}, Hooter:${c.structure.fire_alarm.hooter_qty || 0}`
+                : 'N/A',
+            Hydrant_Points: c.structure?.hydrant_points_qty || 0,
+            HoseReel_Drums: c.structure?.hose_reel_drum_qty || 0
         }))
 
         const filename = `clients_export_${new Date().toISOString().split('T')[0]}`

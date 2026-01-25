@@ -6,13 +6,16 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/contexts/ToastContext'
 import PageHeader from '@/components/PageHeader'
-import { LiquidCard, LiquidInput, LiquidButton } from '@/components/Liquid'
+import { LiquidInput } from '@/components/Liquid'
 import FireEyeLoader from '@/components/FireEyeLoader'
-import SearchableSelect from '@/components/SearchableSelect'
 import DateInput from '@/components/DateInput'
-import { Loader2, Plus, Trash2, Building, Store, Check, MapPin, Phone, Mail, X, Calendar } from 'lucide-react'
+import { Loader2, Plus, Building, Store, Check, MapPin, Phone, Mail, X, Calendar, Minus, ChevronDown } from 'lucide-react'
+import PumpConfiguration from '@/components/ClientForms/PumpConfiguration'
+import InventoryConfiguration from '@/components/ClientForms/InventoryConfiguration'
+import { Pump, FireAlarmConfig, ExtinguisherRow, ExtinguisherType, ExtinguisherConfigItem, ExtinguisherLocationConfig } from '@/components/ClientForms/types'
 
-// Types
+const EXTINGUISHER_TYPES: ExtinguisherType[] = ['ABC', 'CO2', 'Clean Agent', 'ABC Modular', 'Clean Agent Modular', 'Other']
+
 // Types
 type ClientType = 'Office/Store' | 'Society/Residential'
 
@@ -36,6 +39,13 @@ interface ClientForm {
     // Fire Safety Config
     riser_count: number
     extinguisher_pattern: 'Lobby Only' | 'Staircase Only' | 'Both'
+    // Extended Admin Config
+    pumps: Pump[]
+    fire_alarm: FireAlarmConfig
+    extinguishers: ExtinguisherRow[]
+    extinguisher_config: ExtinguisherLocationConfig
+    hydrant_points_qty: number
+    hose_reel_drum_qty: number
 }
 
 const DEFAULT_ROOMS = ['Lift Room', 'Meter Room', 'Pump Room', 'Electrical Panel / Electrical Room', 'Server Room']
@@ -68,7 +78,27 @@ export default function NewClientPage() {
         rooms: [...DEFAULT_ROOMS],
         systems: OPTIONAL_SYSTEMS, // Default to all systems selected
         riser_count: 1,
-        extinguisher_pattern: 'Both'
+        extinguisher_pattern: 'Both',
+        pumps: [
+            { id: '1', name: 'Hydrant Jockey Pump', type: 'Monoblock', hp: 0 },
+            { id: '2', name: 'Main Hydrant Pump', type: 'Monoblock', hp: 0 },
+            { id: '3', name: 'Sprinkler Jockey Pump', type: 'Monoblock', hp: 0 },
+            { id: '4', name: 'Main Sprinkler Pump', type: 'Monoblock', hp: 0 },
+        ],
+        fire_alarm: {
+            panel_qty: 1,
+            smoke_detector_qty: 0,
+            heat_detector_qty: 0,
+            mcp_qty: 0,
+            hooter_qty: 0
+        },
+        extinguishers: [],
+        extinguisher_config: {
+            'Lobby': [{ id: '1', type: 'ABC', count: 1 }],
+            'Staircase': [{ id: '2', type: 'CO2', count: 1 }]
+        },
+        hydrant_points_qty: 0,
+        hose_reel_drum_qty: 0
     })
 
     const [customRoom, setCustomRoom] = useState('')
@@ -136,6 +166,67 @@ export default function NewClientPage() {
         checkAdmin()
     }, [router, showToast])
 
+    // Auto-Calculation Logic
+    useEffect(() => {
+        // Floor Logic
+        const isSociety = form.type === 'Society/Residential'
+        const totalFloors = isSociety 
+            ? (form.basements + form.podiums + form.residential_floors + 1) // +1 for Terrace
+            : 1 // Office/Store = 1 unit
+        
+        const risers = form.riser_count
+
+        // Calculate Extinguishers from Config
+        const activePatterns = []
+        if (form.extinguisher_pattern === 'Both' || form.extinguisher_pattern === 'Lobby Only') activePatterns.push('Lobby')
+        if (form.extinguisher_pattern === 'Both' || form.extinguisher_pattern === 'Staircase Only') activePatterns.push('Staircase')
+
+        // Aggregate counts by type
+        const typeCounts: Record<string, number> = {}
+        
+        activePatterns.forEach(pattern => {
+            const configItems = form.extinguisher_config[pattern] || []
+            configItems.forEach(item => {
+                const totalQty = item.count * totalFloors
+                typeCounts[item.type] = (typeCounts[item.type] || 0) + totalQty
+            })
+        })
+
+        // Generate ID-stable inventory rows
+        const newExtinguisherRows = Object.entries(typeCounts).map(([type, qty], idx) => ({
+            id: `auto-${idx}`, // Simple ID strategy for auto-generated rows
+            type: type,
+            capacity: type.includes('CO2') ? '4.5 KG' : '6 KG', // Rough defaults
+            quantity: qty
+        }))
+
+        // Update counts
+        setForm(prev => {
+             return {
+                 ...prev,
+                 fire_alarm: {
+                     ...prev.fire_alarm,
+                     mcp_qty: totalFloors,
+                     smoke_detector_qty: totalFloors,
+                     hooter_qty: totalFloors
+                 },
+                 hydrant_points_qty: totalFloors * risers,
+                 hose_reel_drum_qty: totalFloors * risers,
+                 extinguishers: newExtinguisherRows // Completely replace or merge? Replacing is safer for strict auto-calc mode.
+             }
+        })
+    }, [form.basements, form.podiums, form.residential_floors, form.riser_count, form.extinguisher_pattern, form.type, form.extinguisher_config])
+
+    const updateExtinguisherConfig = (location: string, items: ExtinguisherConfigItem[]) => {
+        setForm(prev => ({
+            ...prev,
+            extinguisher_config: {
+                ...prev.extinguisher_config,
+                [location]: items
+            }
+        }))
+    }
+
     const calculateStructure = () => {
         const structure: string[] = []
 
@@ -177,6 +268,14 @@ export default function NewClientPage() {
         setLoading(true)
 
         try {
+            // Validator: Check Pump HP
+            const invalidPumps = form.pumps.filter(p => !p.hp || p.hp <= 0)
+            if (invalidPumps.length > 0) {
+                showToast(`Pump capacity cannot be 0. Please update: ${invalidPumps.map(p => p.name || 'Unnamed Pump').join(', ')}`, 'error')
+                setLoading(false)
+                return
+            }
+
             const structureMap = form.type === 'Society/Residential' ? calculateStructure() : ['Ground']
 
             // Get current user's organization_id
@@ -209,7 +308,14 @@ export default function NewClientPage() {
                     has_refuge_area: form.hasRefugeArea,
                     refuge_floors: form.refugeFloors,
                     riser_count: form.riser_count,
-                    extinguisher_pattern: form.extinguisher_pattern
+                    extinguisher_pattern: form.extinguisher_pattern,
+                    // Extended Data
+                    pumps: form.pumps,
+                    fire_alarm: form.fire_alarm,
+                    extinguishers: form.extinguishers,
+                    extinguisher_config: form.extinguisher_config,
+                    hydrant_points_qty: form.hydrant_points_qty,
+                    hose_reel_drum_qty: form.hose_reel_drum_qty
                 }
             })
 
@@ -415,8 +521,9 @@ export default function NewClientPage() {
                                 <input
                                     type="number"
                                     min="0"
+                                    placeholder="0"
                                     className="liquid-input w-full"
-                                    value={form.basements}
+                                    value={form.basements === 0 ? '' : form.basements}
                                     onChange={e => setForm({ ...form, basements: parseInt(e.target.value) || 0 })}
                                 />
                                 <p className="text-xs text-gray-500 mt-1">Generates: B1, B2...</p>
@@ -426,8 +533,9 @@ export default function NewClientPage() {
                                 <input
                                     type="number"
                                     min="0"
+                                    placeholder="0"
                                     className="liquid-input w-full"
-                                    value={form.podiums}
+                                    value={form.podiums === 0 ? '' : form.podiums}
                                     onChange={e => setForm({ ...form, podiums: parseInt(e.target.value) || 0 })}
                                 />
                                 <p className="text-xs text-gray-500 mt-1">Generates: P1, P2...</p>
@@ -437,8 +545,9 @@ export default function NewClientPage() {
                                 <input
                                     type="number"
                                     min="1"
+                                    placeholder="e.g. 20"
                                     className="liquid-input w-full border-primary/30"
-                                    value={form.residential_floors}
+                                    value={form.residential_floors === 0 ? '' : form.residential_floors}
                                     onChange={e => setForm({ ...form, residential_floors: parseInt(e.target.value) || 0 })}
                                 />
                                 <p className="text-xs text-gray-500 mt-1">Numbering continues after Podiums (e.g., P3 to Floor 4)</p>
@@ -508,62 +617,173 @@ export default function NewClientPage() {
                                 </div>
                             )}
                         </div>
+                    </div>
+                )}
 
-                        {/* Fire Safety Configuration */}
-                        <div className="pt-6 border-t border-gray-100 dark:border-white/10">
-                            <h3 className="text-sm font-bold uppercase tracking-wider mb-4 text-gray-500">Fire Safety Configuration</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* 4. Fire Safety Configuration (Common) */}
+                <div className="liquid-card p-6 space-y-6 animate-fade-in">
+                    <h2 className="text-xl font-bold flex items-center gap-2">
+                        Fire Safety Configuration
+                    </h2>
+                    
+                    {form.type === 'Society/Residential' && (
+                        <>
+                            {/* Controls Row - More Compact */}
+                            <div className="flex flex-col md:flex-row gap-6 md:items-start mb-6">
                                 {/* Riser Count */}
-                                <div>
-                                    <label className="block text-sm font-medium mb-2">
-                                        Number of Fire Risers
-                                    </label>
-                                    <div className="flex items-center gap-3">
+                                <div className="bg-gray-50 dark:bg-white/5 p-3 rounded-xl border border-gray-100 dark:border-white/5 flex flex-col items-center min-w-[140px]">
+                                    <label className="text-xs font-bold uppercase text-gray-400 mb-2">Total Risers</label>
+                                    <div className="flex items-center gap-2">
                                         <button
                                             type="button"
                                             onClick={() => setForm(f => ({ ...f, riser_count: Math.max(1, f.riser_count - 1) }))}
-                                            className="w-10 h-10 rounded-lg border border-gray-200 dark:border-white/10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+                                            className="w-8 h-8 rounded-lg border border-gray-200 dark:border-white/10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
                                         >
-                                            <span className="text-xl font-bold">−</span>
+                                            <Minus className="h-4 w-4" />
                                         </button>
-                                        <span className="w-12 text-center text-2xl font-bold">{form.riser_count}</span>
+                                        <span className="w-8 text-center text-lg font-bold">{form.riser_count}</span>
                                         <button
                                             type="button"
                                             onClick={() => setForm(f => ({ ...f, riser_count: f.riser_count + 1 }))}
-                                            className="w-10 h-10 rounded-lg border border-gray-200 dark:border-white/10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+                                            className="w-8 h-8 rounded-lg bg-black dark:bg-white text-white dark:text-black flex items-center justify-center hover:opacity-90 transition-opacity"
                                         >
-                                            <span className="text-xl font-bold">+</span>
+                                            <Plus className="h-4 w-4" />
                                         </button>
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-2">Each riser has Sprinkler, Hydrant Valve, and Hose Reel</p>
                                 </div>
 
                                 {/* Extinguisher Pattern */}
-                                <div>
-                                    <label className="block text-sm font-medium mb-2">
-                                        Fire Extinguisher Locations
-                                    </label>
-                                    <div className="flex flex-wrap gap-2">
+                                <div className="flex-1 bg-gray-50 dark:bg-white/5 p-3 rounded-xl border border-gray-100 dark:border-white/5">
+                                    <label className="text-xs font-bold uppercase text-gray-400 mb-3 block">Extinguisher Locations</label>
+                                    <div className="flex gap-1 bg-gray-100 dark:bg-white/5 p-1 rounded-lg">
                                         {(['Lobby Only', 'Staircase Only', 'Both'] as const).map(pattern => (
                                             <button
                                                 key={pattern}
                                                 type="button"
                                                 onClick={() => setForm(f => ({ ...f, extinguisher_pattern: pattern }))}
-                                                className={`px-4 py-2 rounded-lg border transition-all ${form.extinguisher_pattern === pattern
-                                                    ? 'bg-primary text-white border-primary'
-                                                    : 'border-gray-200 dark:border-white/10 hover:border-primary/50'
+                                                className={`flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all ${form.extinguisher_pattern === pattern
+                                                    ? 'bg-white dark:bg-white/10 text-black dark:text-white shadow-sm'
+                                                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                                                     }`}
                                             >
                                                 {pattern}
                                             </button>
                                         ))}
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-2">Where extinguishers are located on each floor</p>
                                 </div>
                             </div>
-                        </div>
+                            
+                            {/* Detailed Extinguisher Configuration Grid */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                {(['Lobby', 'Staircase'] as const).map(location => {
+                                    if (form.extinguisher_pattern === 'Staircase Only' && location === 'Lobby') return null
+                                    if (form.extinguisher_pattern === 'Lobby Only' && location === 'Staircase') return null
+                                    
+                                    const items = form.extinguisher_config[location] || []
+                                    const isActive = items.length > 0
+                                    
+                                    return (
+                                        <div key={location} className={`p-4 rounded-xl border transition-colors ${
+                                            isActive 
+                                                ? 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10' 
+                                                : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5'
+                                        }`}>
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-black dark:bg-white' : 'bg-gray-300'}`} />
+                                                    <h5 className="font-bold text-sm text-gray-700 dark:text-gray-200">{location} Config</h5>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => updateExtinguisherConfig(location, [...items, { id: crypto.randomUUID(), type: 'ABC', count: 1 }])}
+                                                    className="w-6 h-6 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center text-black dark:text-white hover:bg-gray-100 dark:hover:bg-white/20 transition-all shadow-sm border border-gray-200 dark:border-white/10"
+                                                >
+                                                    <Plus className="h-3.5 w-3.5" />
+                                                </button>
+                                            </div>
+                                            
+                                            <div className="space-y-2">
+                                                {items.map((item, idx) => (
+                                                    <div key={item.id} className="flex gap-2 items-center bg-white dark:bg-black/40 p-1.5 rounded-lg border border-gray-200 dark:border-white/10 group">
+                                                        <div className="relative flex-1 min-w-0">
+                                                            <select
+                                                                className="w-full bg-transparent text-xs font-semibold text-gray-700 dark:text-gray-200 appearance-none py-1 pl-2 pr-6 focus:outline-none"
+                                                                value={item.type}
+                                                                onChange={e => {
+                                                                    const newItems = [...items]
+                                                                    newItems[idx].type = e.target.value as ExtinguisherType
+                                                                    updateExtinguisherConfig(location, newItems)
+                                                                }}
+                                                            >
+                                                                {EXTINGUISHER_TYPES.map(t => (
+                                                                    <option key={t} value={t} className="bg-white dark:bg-gray-900">{t}</option>
+                                                                ))}
+                                                            </select>
+                                                            <ChevronDown className="absolute right-1 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
+                                                        </div>
 
-                        {/* Preview */}
+                                                        <div className="h-4 w-px bg-gray-200 dark:bg-white/10" />
+                                                        
+                                                        <div className="flex items-center gap-1 min-w-[60px]">
+                                                            <span className="text-[10px] uppercase font-bold text-gray-400 pl-1">Qty</span>
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                placeholder="0"
+                                                                className="w-full text-center bg-transparent text-sm font-bold p-0 focus:outline-none"
+                                                                value={item.count === 0 ? '' : item.count}
+                                                                onChange={e => {
+                                                                    const newItems = [...items]
+                                                                    newItems[idx].count = parseInt(e.target.value) || 0
+                                                                    updateExtinguisherConfig(location, newItems)
+                                                                }}
+                                                            />
+                                                        </div>
+
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => updateExtinguisherConfig(location, items.filter((_, i) => i !== idx))}
+                                                            className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
+                                                        >
+                                                            <X className="h-3 w-3" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                {items.length === 0 && (
+                                                    <div className="py-4 text-center border-2 border-dashed border-gray-200 dark:border-white/5 rounded-lg">
+                                                        <p className="text-xs text-gray-400">No extinguishers</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </>
+                    )}
+
+                    {/* Admin Extended Configuration */}
+                    {isAdmin && (
+                        <div className="space-y-6 animate-fade-in pt-6 border-t border-gray-100 dark:border-white/10">
+                            <InventoryConfiguration
+                                extinguishers={form.extinguishers}
+                                fireAlarm={form.fire_alarm}
+                                hydrantQty={form.hydrant_points_qty}
+                                hoseReelQty={form.hose_reel_drum_qty}
+                                onChangeExtinguishers={rows => setForm({ ...form, extinguishers: rows })}
+                                onChangeFireAlarm={cfg => setForm({ ...form, fire_alarm: cfg })}
+                                onChangeHydrant={q => setForm({ ...form, hydrant_points_qty: q })}
+                                onChangeHoseReel={q => setForm({ ...form, hose_reel_drum_qty: q })}
+                            />
+                            <PumpConfiguration
+                                pumps={form.pumps}
+                                onChange={p => setForm({ ...form, pumps: p })}
+                            />
+                        </div>
+                    )}
+
+                    {/* Preview */}
+                    {form.type === 'Society/Residential' && (
                         <div className="bg-black/5 dark:bg-white/5 p-4 rounded-xl">
                             <h4 className="text-xs font-bold uppercase tracking-wider mb-2 text-gray-500">Structure Preview</h4>
                             <div className="flex flex-wrap gap-2">
@@ -580,8 +800,8 @@ export default function NewClientPage() {
                                 ))}
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
 
 
                 {/* 4. Rooms & Infrastructure */}

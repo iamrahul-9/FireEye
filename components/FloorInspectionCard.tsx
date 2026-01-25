@@ -3,7 +3,10 @@
 import { Minus, Plus, AlertTriangle } from 'lucide-react'
 import { LiquidCheckbox } from '@/components/Liquid'
 import PhotoUpload from '@/components/PhotoUpload'
-import type { FloorData, ExtinguisherType, ExtinguisherData, RiserData, InspectionData } from './DynamicInspectionForm'
+import type { FloorData, ExtinguisherData, RiserData, InspectionData } from './DynamicInspectionForm'
+import { ExtinguisherType } from './ClientForms/types'
+
+const EXTINGUISHER_TYPES: ExtinguisherType[] = ['ABC', 'CO2', 'Clean Agent', 'ABC Modular', 'Clean Agent Modular', 'Other']
 
 interface FloorInspectionCardProps {
     floor: FloorData
@@ -28,12 +31,12 @@ export default function FloorInspectionCard({ floor, floorIdx, data, setData }: 
         setData({ ...data, floors: newFloors })
     }
 
-    const updateRiser = (riserIdx: number, field: 'sprinkler' | 'hydrant_valve' | 'hose_reel', updates: Partial<RiserData['sprinkler']>) => {
+    const updateRiser = (riserIdx: number, field: 'sprinkler' | 'hydrant_valve' | 'hose_reel', updates: any) => {
         const newFloors = [...data.floors]
         newFloors[floorIdx].risers[riserIdx][field] = {
             ...newFloors[floorIdx].risers[riserIdx][field],
             ...updates
-        } as typeof newFloors[number]['risers'][number][typeof field]
+        }
         setData({ ...data, floors: newFloors })
     }
 
@@ -74,7 +77,7 @@ export default function FloorInspectionCard({ floor, floorIdx, data, setData }: 
                                 <div className="flex-1 min-w-[200px]">
                                     <label className="text-[10px] font-bold uppercase text-gray-400 mb-1 block">Types & Counts</label>
                                     <div className="flex flex-wrap gap-3">
-                                        {(['ABC', 'CO2'] as ExtinguisherType[]).map(type => {
+                                        {EXTINGUISHER_TYPES.map(type => {
                                             const count = ext.types?.[type] || 0
                                             const isSelected = count > 0
                                             return (

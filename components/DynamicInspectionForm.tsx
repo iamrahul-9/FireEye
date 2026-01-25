@@ -36,7 +36,8 @@ type Client = {
     }
 }
 
-export type ExtinguisherType = 'ABC' | 'CO2' | 'ABC Modular' | 'Clean Agent' | 'Clean Agent Modular' | 'FM-200' | 'Water Type'
+// Imported from shared types or redefined to match
+export type ExtinguisherType = 'ABC' | 'CO2' | 'Clean Agent' | 'ABC Modular' | 'Clean Agent Modular' | 'Other'
 
 // Extinguisher data per location (Lobby or Staircase)
 export type ExtinguisherData = {
