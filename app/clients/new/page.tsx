@@ -9,7 +9,7 @@ import PageHeader from '@/components/PageHeader'
 import { LiquidInput } from '@/components/Liquid'
 import FireEyeLoader from '@/components/FireEyeLoader'
 import DateInput from '@/components/DateInput'
-import { Loader2, Plus, Building, Store, Check, MapPin, Phone, Mail, X, Calendar, Minus, ChevronDown } from 'lucide-react'
+import { Loader2, Plus, Building, Store, Check, MapPin, Phone, Mail, X, Calendar, Minus, ChevronDown, Layers, TrendingUp, Combine } from 'lucide-react'
 import PumpConfiguration from '@/components/ClientForms/PumpConfiguration'
 import InventoryConfiguration from '@/components/ClientForms/InventoryConfiguration'
 import { Pump, FireAlarmConfig, ExtinguisherRow, ExtinguisherType, ExtinguisherConfigItem, ExtinguisherLocationConfig } from '@/components/ClientForms/types'
@@ -645,7 +645,7 @@ export default function NewClientPage() {
                                         <button
                                             type="button"
                                             onClick={() => setForm(f => ({ ...f, riser_count: f.riser_count + 1 }))}
-                                            className="w-8 h-8 rounded-lg bg-black dark:bg-white text-white dark:text-black flex items-center justify-center hover:opacity-90 transition-opacity"
+                                            className="w-8 h-8 rounded-lg border border-gray-200 dark:border-white/10 flex items-center justify-center hover:bg-primary/5 hover:border-primary hover:text-primary transition-all"
                                         >
                                             <Plus className="h-4 w-4" />
                                         </button>
@@ -655,18 +655,23 @@ export default function NewClientPage() {
                                 {/* Extinguisher Pattern */}
                                 <div className="flex-1 bg-gray-50 dark:bg-white/5 p-3 rounded-xl border border-gray-100 dark:border-white/5">
                                     <label className="text-xs font-bold uppercase text-gray-400 mb-3 block">Extinguisher Locations</label>
-                                    <div className="flex gap-1 bg-gray-100 dark:bg-white/5 p-1 rounded-lg">
-                                        {(['Lobby Only', 'Staircase Only', 'Both'] as const).map(pattern => (
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {[
+                                            { id: 'Lobby Only', icon: Layers, label: 'Lobby' },
+                                            { id: 'Staircase Only', icon: TrendingUp, label: 'Staircase' },
+                                            { id: 'Both', icon: Combine, label: 'Both' }
+                                        ].map(opt => (
                                             <button
-                                                key={pattern}
+                                                key={opt.id}
                                                 type="button"
-                                                onClick={() => setForm(f => ({ ...f, extinguisher_pattern: pattern }))}
-                                                className={`flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all ${form.extinguisher_pattern === pattern
-                                                    ? 'bg-primary text-white shadow-md shadow-primary/20'
-                                                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                                                onClick={() => setForm(f => ({ ...f, extinguisher_pattern: opt.id as any }))}
+                                                className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${form.extinguisher_pattern === opt.id
+                                                    ? 'border-primary bg-primary/5 text-primary'
+                                                    : 'border-transparent bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-500'
                                                     }`}
                                             >
-                                                {pattern}
+                                                <opt.icon className="h-5 w-5" />
+                                                <span className="text-xs font-bold">{opt.label}</span>
                                             </button>
                                         ))}
                                     </div>
