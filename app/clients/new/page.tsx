@@ -9,7 +9,7 @@ import PageHeader from '@/components/PageHeader'
 import { LiquidInput } from '@/components/Liquid'
 import FireEyeLoader from '@/components/FireEyeLoader'
 import DateInput from '@/components/DateInput'
-import { Loader2, Plus, Building, Store, Check, MapPin, Phone, Mail, X, Calendar, Minus, ChevronDown, Layers, TrendingUp, Combine } from 'lucide-react'
+import { Loader2, Plus, Building, Store, Check, MapPin, Phone, Mail, X, Calendar, Minus, ChevronDown, Layers, DoorOpen, Footprints } from 'lucide-react'
 import PumpConfiguration from '@/components/ClientForms/PumpConfiguration'
 import InventoryConfiguration from '@/components/ClientForms/InventoryConfiguration'
 import { Pump, FireAlarmConfig, ExtinguisherRow, ExtinguisherType, ExtinguisherConfigItem, ExtinguisherLocationConfig } from '@/components/ClientForms/types'
@@ -629,7 +629,7 @@ export default function NewClientPage() {
                     {form.type === 'Society/Residential' && (
                         <>
                             {/* Controls Row - More Compact */}
-                            <div className="flex flex-col md:flex-row gap-6 md:items-start mb-6">
+                            <div className="flex flex-col md:flex-row gap-6 md:items-stretch mb-6">
                                 {/* Riser Count */}
                                 <div className="bg-gray-50 dark:bg-white/5 p-3 rounded-xl border border-gray-100 dark:border-white/5 flex flex-col items-center min-w-[140px]">
                                     <label className="text-xs font-bold uppercase text-gray-400 mb-2">Total Risers</label>
@@ -637,7 +637,7 @@ export default function NewClientPage() {
                                         <button
                                             type="button"
                                             onClick={() => setForm(f => ({ ...f, riser_count: Math.max(1, f.riser_count - 1) }))}
-                                            className="w-8 h-8 rounded-lg border border-gray-200 dark:border-white/10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+                                            className="w-8 h-8 rounded-lg border border-gray-200 dark:border-white/10 flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
                                         >
                                             <Minus className="h-4 w-4" />
                                         </button>
@@ -645,7 +645,7 @@ export default function NewClientPage() {
                                         <button
                                             type="button"
                                             onClick={() => setForm(f => ({ ...f, riser_count: f.riser_count + 1 }))}
-                                            className="w-8 h-8 rounded-lg border border-gray-200 dark:border-white/10 flex items-center justify-center hover:bg-primary/5 hover:border-primary hover:text-primary transition-all"
+                                            className="w-8 h-8 rounded-lg border border-gray-200 dark:border-white/10 flex items-center justify-center text-gray-500 hover:bg-primary/5 hover:border-primary hover:text-primary transition-all bg-transparent"
                                         >
                                             <Plus className="h-4 w-4" />
                                         </button>
@@ -657,9 +657,9 @@ export default function NewClientPage() {
                                     <label className="text-xs font-bold uppercase text-gray-400 mb-3 block">Extinguisher Locations</label>
                                     <div className="grid grid-cols-3 gap-3">
                                         {[
-                                            { id: 'Lobby Only', icon: Layers, label: 'Lobby' },
-                                            { id: 'Staircase Only', icon: TrendingUp, label: 'Staircase' },
-                                            { id: 'Both', icon: Combine, label: 'Both' }
+                                            { id: 'Lobby Only', icon: DoorOpen, label: 'Lobby' },
+                                            { id: 'Staircase Only', icon: Footprints, label: 'Staircase' },
+                                            { id: 'Both', icon: Layers, label: 'Both' }
                                         ].map(opt => (
                                             <button
                                                 key={opt.id}
