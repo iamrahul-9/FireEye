@@ -631,23 +631,23 @@ export default function NewClientPage() {
                             {/* Controls Row - More Compact */}
                             <div className="flex flex-col md:flex-row gap-6 md:items-stretch mb-6">
                                 {/* Riser Count */}
-                                <div className="bg-gray-50 dark:bg-white/5 p-3 rounded-xl border border-gray-100 dark:border-white/5 flex flex-col items-center min-w-[140px]">
+                                <div className="bg-gray-50 dark:bg-white/5 p-4 rounded-xl border border-gray-100 dark:border-white/5 flex flex-col items-center justify-center min-w-[140px]">
                                     <label className="text-xs font-bold uppercase text-gray-400 mb-2">Total Risers</label>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-3">
                                         <button
                                             type="button"
                                             onClick={() => setForm(f => ({ ...f, riser_count: Math.max(1, f.riser_count - 1) }))}
-                                            className="w-8 h-8 rounded-lg border border-gray-200 dark:border-white/10 flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+                                            className="w-10 h-10 rounded-xl border border-gray-200 dark:border-white/10 flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
                                         >
-                                            <Minus className="h-4 w-4" />
+                                            <Minus className="h-5 w-5" />
                                         </button>
-                                        <span className="w-8 text-center text-lg font-bold">{form.riser_count}</span>
+                                        <span className="w-10 text-center text-xl font-bold">{form.riser_count}</span>
                                         <button
                                             type="button"
                                             onClick={() => setForm(f => ({ ...f, riser_count: f.riser_count + 1 }))}
-                                            className="w-8 h-8 rounded-lg border border-gray-200 dark:border-white/10 flex items-center justify-center text-gray-500 hover:bg-primary/5 hover:border-primary hover:text-primary transition-all bg-transparent"
+                                            className="w-10 h-10 rounded-xl border border-gray-200 dark:border-white/10 flex items-center justify-center text-gray-500 hover:bg-primary/5 hover:border-primary hover:text-primary transition-all bg-transparent"
                                         >
-                                            <Plus className="h-4 w-4" />
+                                            <Plus className="h-5 w-5" />
                                         </button>
                                     </div>
                                 </div>
