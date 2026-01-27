@@ -662,7 +662,7 @@ export default function NewClientPage() {
                                                 type="button"
                                                 onClick={() => setForm(f => ({ ...f, extinguisher_pattern: pattern }))}
                                                 className={`flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all ${form.extinguisher_pattern === pattern
-                                                    ? 'bg-white dark:bg-white/10 text-black dark:text-white shadow-sm'
+                                                    ? 'bg-primary text-white shadow-md shadow-primary/20'
                                                     : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                                                     }`}
                                             >
@@ -705,7 +705,7 @@ export default function NewClientPage() {
                                             <div className="space-y-2">
                                                 {items.map((item, idx) => (
                                                     <div key={item.id} className="flex gap-2 items-center bg-white dark:bg-black/40 p-1.5 rounded-lg border border-gray-200 dark:border-white/10 group">
-                                                        <div className="relative flex-1 min-w-0">
+                                                        <div className="relative flex-1 min-w-[120px]">
                                                             <select
                                                                 className="w-full bg-transparent text-xs font-semibold text-gray-700 dark:text-gray-200 appearance-none py-1 pl-2 pr-6 focus:outline-none"
                                                                 value={item.type}
