@@ -1,117 +1,39 @@
-import { Plus, Trash2, Box, Flame, Bell } from 'lucide-react'
-import { ExtinguisherRow, FireAlarmConfig } from './types'
+import { Bell, ChevronDown, Droplets } from 'lucide-react'
+import { FireAlarmConfig, SprinklerConfig } from './types'
 import { LiquidInput } from '@/components/Liquid'
 
 interface InventoryConfigurationProps {
-    extinguishers: ExtinguisherRow[]
     fireAlarm: FireAlarmConfig
     hydrantQty: number
     hoseReelQty: number
-    onChangeExtinguishers: (rows: ExtinguisherRow[]) => void
+    sprinklerQty: number
+    sprinklerConfig: SprinklerConfig
     onChangeFireAlarm: (config: FireAlarmConfig) => void
     onChangeHydrant: (qty: number) => void
     onChangeHoseReel: (qty: number) => void
+
+    onChangeSprinklerQty: (qty: number) => void
+    onChangeSprinklerConfig: (config: SprinklerConfig) => void
+    clientType?: 'Office/Store' | 'Society/Residential'
 }
 
 export default function InventoryConfiguration({
-    extinguishers,
     fireAlarm,
     hydrantQty,
     hoseReelQty,
-    onChangeExtinguishers,
+    sprinklerQty,
+    sprinklerConfig,
     onChangeFireAlarm,
     onChangeHydrant,
-    onChangeHoseReel
+    onChangeHoseReel,
+
+    onChangeSprinklerQty,
+    onChangeSprinklerConfig,
+    clientType
 }: InventoryConfigurationProps) {
-
-    const addExtinguisherRow = () => {
-        onChangeExtinguishers([
-            ...extinguishers,
-            { id: crypto.randomUUID(), type: '', capacity: '', quantity: 0 }
-        ])
-    }
-
-    const updateExtinguisher = (id: string, updates: Partial<ExtinguisherRow>) => {
-        onChangeExtinguishers(extinguishers.map(e => e.id === id ? { ...e, ...updates } : e))
-    }
-
-    const removeExtinguisher = (id: string) => {
-        onChangeExtinguishers(extinguishers.filter(e => e.id !== id))
-    }
 
     return (
         <div className="space-y-8">
-            {/* Fire Extinguishers */}
-            <div className="liquid-card p-6 space-y-6">
-                <h2 className="text-xl font-bold flex items-center gap-2">
-                    <span className="bg-red-500/10 p-2 rounded-lg text-red-500">
-                        <Flame className="h-5 w-5" />
-                    </span>
-                    Fire Extinguisher Inventory
-                </h2>
-                
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="border-b border-gray-100 dark:border-white/10 text-xs uppercase text-gray-400">
-                                <th className="p-3">Type</th>
-                                <th className="p-3">Capacity</th>
-                                <th className="p-3 w-32">Quantity</th>
-                                <th className="p-3 w-16"></th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                            {extinguishers.map((row) => (
-                                <tr key={row.id} className="group hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-                                    <td className="p-2">
-                                        <LiquidInput
-                                            value={row.type}
-                                            onChange={e => updateExtinguisher(row.id, { type: e.target.value })}
-                                            placeholder="e.g. ABC"
-                                            className="h-10 text-sm"
-                                        />
-                                    </td>
-                                    <td className="p-2">
-                                        <LiquidInput
-                                            value={row.capacity}
-                                            onChange={e => updateExtinguisher(row.id, { capacity: e.target.value })}
-                                            placeholder="e.g. 4 KG"
-                                            className="h-10 text-sm"
-                                        />
-                                    </td>
-                                    <td className="p-2">
-                                        <LiquidInput
-                                            type="number"
-                                            min="0"
-                                            placeholder="0"
-                                            value={row.quantity === 0 ? '' : row.quantity}
-                                            onChange={e => updateExtinguisher(row.id, { quantity: parseInt(e.target.value) || 0 })}
-                                            className="h-10 text-sm font-bold text-center"
-                                        />
-                                    </td>
-                                    <td className="p-2 text-right">
-                                        <button
-                                            type="button"
-                                            onClick={() => removeExtinguisher(row.id)}
-                                            className="p-2 text-gray-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-                <button
-                    type="button"
-                    onClick={addExtinguisherRow}
-                    className="text-sm font-bold text-primary hover:text-primary/80 flex items-center gap-1"
-                >
-                    <Plus className="h-4 w-4" /> Add Item
-                </button>
-            </div>
-
             {/* Fire Alarm System */}
             <div className="liquid-card p-6 space-y-6">
                 <h2 className="text-xl font-bold flex items-center gap-2">
@@ -175,35 +97,112 @@ export default function InventoryConfiguration({
                 </div>
             </div>
 
-            {/* Other System Quantities */}
+            {/* Water Based Systems */}
             <div className="liquid-card p-6 space-y-6">
                 <h2 className="text-xl font-bold flex items-center gap-2">
                      <span className="bg-blue-500/10 p-2 rounded-lg text-blue-500">
-                        <Box className="h-5 w-5" />
+                        <Droplets className="h-5 w-5" />
                     </span>
-                    Other Assets
+                    Water Based Fire Fighting Systems
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {/* Hydrant - Hidden for Office/Store */}
+                    {clientType !== 'Office/Store' && (
+                        <div>
+                            <label className="text-sm font-bold mb-2 block">Hydrant Valves</label>
+                            <LiquidInput
+                                type="number"
+                                min="0"
+                                placeholder="0"
+                                value={hydrantQty === 0 ? '' : hydrantQty}
+                                onChange={e => onChangeHydrant(parseInt(e.target.value) || 0)}
+                            />
+                            <p className="text-xs text-gray-400 mt-1">Total count</p>
+                        </div>
+                    )}
+
+                    {/* Hose Reel - Hidden for Office/Store */}
+                    {clientType !== 'Office/Store' && (
+                        <div>
+                            <label className="text-sm font-bold mb-2 block">Hose Reel Drums</label>
+                            <LiquidInput
+                                type="number"
+                                min="0"
+                                placeholder="0"
+                                value={hoseReelQty === 0 ? '' : hoseReelQty}
+                                onChange={e => onChangeHoseReel(parseInt(e.target.value) || 0)}
+                            />
+                            <p className="text-xs text-gray-400 mt-1">Total count</p>
+                        </div>
+                    )}
+
+                    {/* Sprinklers */}
                     <div>
-                        <label className="text-sm font-bold mb-2 block">Total Hydrant Valves</label>
+                        <label className="text-sm font-bold mb-2 block">Sprinklers</label>
                         <LiquidInput
                             type="number"
                             min="0"
                             placeholder="0"
-                            value={hydrantQty === 0 ? '' : hydrantQty}
-                            onChange={e => onChangeHydrant(parseInt(e.target.value) || 0)}
+                            value={sprinklerQty === 0 ? '' : sprinklerQty}
+                            onChange={e => onChangeSprinklerQty(parseInt(e.target.value) || 0)}
                         />
-                         <p className="text-xs text-gray-400 mt-1">Total count of Hydrant points across all floors/risers</p>
+                         <p className="text-xs text-gray-400 mt-1">Total count</p>
                     </div>
-                    <div>
-                        <label className="text-sm font-bold mb-2 block">Total Hose Reel Drums</label>
-                        <LiquidInput
-                            type="number"
-                            min="0"
-                            placeholder="0"
-                            value={hoseReelQty === 0 ? '' : hoseReelQty}
-                            onChange={e => onChangeHoseReel(parseInt(e.target.value) || 0)}
-                        />
+
+                    {/* Sprinkler Config Row */}
+                    <div className="md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-100 dark:border-white/5">
+                        {/* Alignment */}
+                        <div>
+                            <label className="text-sm font-bold mb-2 block">Sprinkler Alignment</label>
+                            <div className="relative">
+                                <select
+                                    className="w-full bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm appearance-none focus:outline-none focus:border-primary transition-colors"
+                                    value={sprinklerConfig?.alignment || 'Pendent'}
+                                    onChange={e => onChangeSprinklerConfig({ ...sprinklerConfig, alignment: e.target.value as any })}
+                                >
+                                    <option value="Pendent">Pendent</option>
+                                    <option value="Upright">Upright</option>
+                                    <option value="Side wall">Side wall</option>
+                                </select>
+                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                            </div>
+                        </div>
+
+                        {/* Temperature */}
+                        <div>
+                            <label className="text-sm font-bold mb-2 block">Temperature Rating</label>
+                            <div className="flex gap-2">
+                                <div className="relative flex-1">
+                                    <select
+                                        className="w-full bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm appearance-none focus:outline-none focus:border-primary transition-colors"
+                                        value={['68', '93'].includes(sprinklerConfig?.temperature) ? sprinklerConfig.temperature : 'Other'}
+                                        onChange={e => {
+                                            const val = e.target.value
+                                            if (val === 'Other') {
+                                                onChangeSprinklerConfig({ ...sprinklerConfig, temperature: '' })
+                                            } else {
+                                                onChangeSprinklerConfig({ ...sprinklerConfig, temperature: val })
+                                            }
+                                        }}
+                                    >
+                                        <option value="68">68°C</option>
+                                        <option value="93">93°C</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                                </div>
+                                {!['68', '93'].includes(sprinklerConfig?.temperature) && (
+                                    <div className="flex-1 animate-fade-in-left">
+                                        <LiquidInput
+                                            value={sprinklerConfig?.temperature}
+                                            onChange={e => onChangeSprinklerConfig({ ...sprinklerConfig, temperature: e.target.value })}
+                                            placeholder="Enter Temp"
+                                            className="h-[42px]"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

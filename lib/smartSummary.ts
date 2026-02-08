@@ -102,5 +102,51 @@ export const generateInspectionSummary = (data: InspectionData): string => {
         parts.push("Based on the above observations, the premises are currently non-compliant with fire safety requirements and require corrective measures.")
     }
 
-    return parts.join("\n")
+    return parts.join('\n')
+}
+
+// Helper to generate specific notes for a floor based on its issues
+// Used for the "Auto-fill with AI" feature in FloorInspectionCard
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const generateFloorSummary = (floor: any): string => {
+    const issues: string[] = []
+
+    // 1. Extinguishers
+    if (floor.extinguishers) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        floor.extinguishers.forEach((ext: any) => {
+            if (ext.status !== 'Okay' && ext.status !== 'Not Available') {
+                issues.push(`${ext.location} extinguisher is ${ext.status.toLowerCase()}.`)
+            }
+        })
+    }
+
+    // 2. Fire Alarm
+    if (floor.fire_alarm?.status === 'Not Okay') {
+        issues.push("Fire alarm system reported abnormality.")
+    }
+
+    // 3. Risers
+    if (floor.risers) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        floor.risers.forEach((riser: any) => {
+            if (riser.sprinkler.status !== 'Okay') {
+                issues.push(`Sprinkler at ${riser.name}: ${riser.sprinkler.status}.`)
+            }
+            if (riser.hydrant_valve.status !== 'Okay' && riser.hydrant_valve.status !== 'Not Available') {
+                issues.push(`Hydrant valve at ${riser.name}: ${riser.hydrant_valve.status}.`)
+            }
+            if (riser.hose_reel.status !== 'Okay' && riser.hose_reel.status !== 'Not Available') {
+                issues.push(`Hose reel at ${riser.name}: ${riser.hose_reel.status}.`)
+            }
+        })
+    }
+
+    // 4. Refuge
+    if (floor.refuge_area?.status === 'Obstructed / Occupied') {
+        issues.push("Refuge area is obstructed.")
+    }
+
+    if (issues.length === 0) return "No visible issues found on this floor."
+    return issues.join(' ')
 }

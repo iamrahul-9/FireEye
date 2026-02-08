@@ -35,16 +35,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     return (
         <ToastContext.Provider value={{ showToast }}>
             {children}
-            {/* Backdrop Blur Overlay & Immersive Effects */}
-            <div
-                className={`fixed inset-0 z-[49] transition-all duration-500 overflow-hidden print:hidden ${toasts.length > 0
-                    ? 'bg-black/20 backdrop-blur-sm opacity-100 pointer-events-auto'
-                    : 'opacity-0 pointer-events-none'
-                    }`}
-            />
+            {children}
 
-            {/* Centered Toast Container */}
-            <div className="fixed inset-0 z-[50] flex flex-col items-center justify-center pointer-events-none p-4 print:hidden">
+
+            {/* Centered Toast Container  - Now Top Aligned & Non-Blocking */}
+            <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-start pointer-events-none p-4 pt-6 print:hidden">
                 {toasts.map((toast) => (
                     <div
                         key={toast.id}

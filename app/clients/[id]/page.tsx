@@ -8,10 +8,14 @@ import PageHeader from '@/components/PageHeader'
 import { LiquidButton, LiquidCard } from '@/components/Liquid'
 import { Loader2, Trash2, Edit, MapPin, Phone, Mail, CheckCircle } from 'lucide-react'
 
+import AdminClientDashboard from '@/components/AdminClientDashboard'
+import { Pump, FireAlarmConfig, ExtinguisherRow } from '@/components/ClientForms/types'
+
 // Define Client type to avoid `any`
 interface Client {
     id: string
     name: string
+    contact_person?: string
     type: string
     address: string
     phone: string
@@ -22,6 +26,12 @@ interface Client {
         floors?: number
         rooms?: string[]
         systems?: string[]
+        // Admin Data
+        pumps?: Pump[]
+        fire_alarm?: FireAlarmConfig
+        extinguishers?: ExtinguisherRow[]
+        hydrant_points_qty?: number
+        hose_reel_drum_qty?: number
     }
 }
 
@@ -58,6 +68,7 @@ export default function ClientDetailsPage() {
             showToast('Client not found', 'error')
             router.push('/clients')
         } else {
+            console.log('Fetched Client:', data) // Debug
             setClient(data)
         }
         setLoading(false)
@@ -126,8 +137,26 @@ export default function ClientDetailsPage() {
                     <div className="space-y-3">
                         <div className="flex items-start gap-3 text-gray-600 dark:text-gray-300">
                             <MapPin className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                            <span>{client.address}</span>
+                            <div>
+                                <p className="text-xs text-gray-400 font-bold uppercase mb-0.5">
+                                    {client.type === 'Society/Residential' ? 'Society Address' : 'Office Address'}
+                                </p>
+                                <span>{client.address}</span>
+                            </div>
                         </div>
+
+                        {client.contact_person && (
+                            <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+                                <div className="h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 text-primary flex-shrink-0">
+                                    <span className="text-xs font-bold">@</span>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-400 font-bold uppercase mb-0.5">Client Name</p>
+                                    <span className="font-medium text-gray-900 dark:text-white">{client.contact_person}</span>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
                             <Phone className="h-5 w-5 text-primary flex-shrink-0" />
                             <span>{client.phone}</span>
@@ -158,7 +187,10 @@ export default function ClientDetailsPage() {
                             </div>
                         </div>
                     ) : (
-                        <p className="text-gray-500 italic">Standard commercial structure.</p>
+                        <div className="p-4 bg-gray-50 dark:bg-white/5 rounded-xl text-center">
+                            <p className="font-bold text-gray-700 dark:text-gray-200">Standard Commercial</p>
+                            <p className="text-xs text-gray-500 mt-1">Single Unit / Storefront</p>
+                        </div>
                     )}
                 </LiquidCard>
 
@@ -189,6 +221,13 @@ export default function ClientDetailsPage() {
                         </div>
                     </div>
                 </LiquidCard>
+
+                {/* Admin Only: Detailed Inventory */}
+                {isAdmin && client.structure && (
+                    <div className="md:col-span-2 pt-6 border-t border-gray-100 dark:border-white/10">
+                          <AdminClientDashboard structure={client.structure} clientType={client.type} />
+                    </div>
+                )}
             </div>
         </div>
     )

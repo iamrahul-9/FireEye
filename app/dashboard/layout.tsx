@@ -16,11 +16,15 @@ import {
     BarChart3,
     ChevronUp,
     Calendar,
-    Shield
+    Shield,
+    Settings
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import ThemeToggle from '@/components/ThemeToggle'
+import FireEyeCopilot from '@/components/FireEyeCopilot'
+import { CopilotProvider } from '@/contexts/CopilotContext'
 import { ensureUserProfile } from '@/app/actions/profile'
+import APISettingsModal from '@/components/APISettingsModal'
 
 export default function DashboardLayout({
     children,
@@ -35,6 +39,7 @@ export default function DashboardLayout({
     const [user, setUser] = useState<any>(null)
     const [role, setRole] = useState<string | null>(null)
     const [fullName, setFullName] = useState<string | null>(null)
+    const [showAPISettings, setShowAPISettings] = useState(false)
 
     useEffect(() => {
         const checkUser = async () => {
@@ -88,17 +93,18 @@ export default function DashboardLayout({
     const navItems = allNavItems.filter(item => item.roles.includes(effectiveRole))
 
     return (
-        <div className="min-h-screen relative overflow-hidden font-sans text-gray-900 dark:text-white">
-            {/* Global Floating Background Orbs - Fixed to viewport */}
-            <div className="fixed top-0 left-0 w-[800px] h-[800px] bg-orange-500/10 rounded-full blur-[120px] animate-float opacity-40 mix-blend-screen pointer-events-none z-0 print:hidden" />
-            <div className="fixed bottom-0 right-0 w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[100px] animate-float-delayed opacity-30 mix-blend-screen pointer-events-none z-0 print:hidden" />
+        <CopilotProvider>
+            <div className="min-h-screen relative overflow-hidden font-sans text-gray-900 dark:text-white">
+                {/* Global Floating Background Orbs - Fixed to viewport */}
+                <div className="fixed top-0 left-0 w-[800px] h-[800px] bg-orange-500/10 rounded-full blur-[120px] animate-float opacity-40 mix-blend-screen pointer-events-none z-0 print:hidden" />
+                <div className="fixed bottom-0 right-0 w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[100px] animate-float-delayed opacity-30 mix-blend-screen pointer-events-none z-0 print:hidden" />
 
-            {/* Mobile header - Fixed Sticky */}
-            <div className="lg:hidden flex items-center justify-between bg-white/5 backdrop-blur-xl border-b border-white/10 px-4 py-3 fixed top-0 left-0 right-0 z-50 print:hidden h-[60px]">
-                <div className="flex items-center gap-2">
-                    <Flame className="h-6 w-6 text-primary" />
-                    <span className="font-bold text-lg">FireEye</span>
-                </div>
+                {/* Mobile header - Fixed Sticky */}
+                <div className="lg:hidden flex items-center justify-between bg-white/5 backdrop-blur-xl border-b border-white/10 px-4 py-3 fixed top-0 left-0 right-0 z-50 print:hidden h-[60px]">
+                    <div className="flex items-center gap-2">
+                        <Flame className="h-6 w-6 text-primary" />
+                        <span className="font-bold text-lg">FireEye</span>
+                    </div>
                 <button
                     onClick={() => setSidebarOpen(!sidebarOpen)}
                     className="p-2 rounded-md text-gray-500 hover:bg-white/10"
@@ -160,6 +166,16 @@ export default function DashboardLayout({
                                         <span>Appearance</span>
                                         <ThemeToggle align="right" side="top" />
                                     </div>
+                                    <button
+                                        onClick={() => {
+                                            setShowUserMenu(false)
+                                            setShowAPISettings(true)
+                                        }}
+                                        className="w-full flex items-center px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-colors"
+                                    >
+                                        <Settings className="h-4 w-4 mr-2" />
+                                        API Settings
+                                    </button>
                                     <div className="h-px bg-gray-200 dark:bg-white/10 my-1" />
                                     <button
                                         onClick={handleSignOut}
@@ -200,6 +216,16 @@ export default function DashboardLayout({
                     </main>
                 </div>
             </div>
+
+            {/* API Settings Modal */}
+            <APISettingsModal 
+                isOpen={showAPISettings} 
+                onClose={() => setShowAPISettings(false)} 
+            />
+
+            {/* Global Copilot */}
+            <FireEyeCopilot />
         </div>
+        </CopilotProvider>
     )
 }

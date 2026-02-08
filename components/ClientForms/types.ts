@@ -1,5 +1,7 @@
 
-export type ExtinguisherType = 'ABC' | 'CO2' | 'Clean Agent' | 'ABC Modular' | 'Clean Agent Modular' | 'Other'
+export const EXTINGUISHER_TYPES = ['ABC', 'CO2', 'Clean Agent', 'ABC Modular', 'Clean Agent Modular', 'Other'] as const
+export type ExtinguisherType = string
+
 
 export interface ExtinguisherConfigItem {
     id: string
@@ -34,6 +36,11 @@ export interface ExtinguisherRow {
     quantity: number
 }
 
+export interface SprinklerConfig {
+    alignment: 'Pendent' | 'Upright' | 'Side wall'
+    temperature: '68' | '93' | string
+}
+
 export interface ClientFormExtended {
     // ... existing fields will be merged in page.tsx ...
     pumps: Pump[]
@@ -42,4 +49,6 @@ export interface ClientFormExtended {
     extinguisher_config: ExtinguisherLocationConfig // The per-floor configuration
     hydrant_points_qty: number
     hose_reel_drum_qty: number
+    sprinkler_qty: number
+    sprinkler_config: SprinklerConfig
 }

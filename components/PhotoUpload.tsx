@@ -2,21 +2,44 @@
 
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Camera, X, Image as ImageIcon } from 'lucide-react'
+import { Camera, X, Image as ImageIcon, Sparkles, Loader2 } from 'lucide-react'
 import FireEyeLoader from '@/components/FireEyeLoader'
 import { useToast } from '@/contexts/ToastContext'
 import { compressImage } from '@/lib/imageCompression'
+import { analyzeImage } from '@/app/actions/analyzeImage'
 
 interface PhotoUploadProps {
     onUpload: (url: string) => void
     currentUrl?: string
     label?: string
     required?: boolean
+    onAnalyze?: (result: string) => void
 }
 
-export default function PhotoUpload({ onUpload, currentUrl, label = "Upload Photo", required = false }: PhotoUploadProps) {
+export default function PhotoUpload({ onUpload, currentUrl, label = "Upload Photo", required = false, onAnalyze }: PhotoUploadProps) {
     const { showToast } = useToast()
     const [uploading, setUploading] = useState(false)
+    const [analyzing, setAnalyzing] = useState(false)
+
+    const handleAnalyze = async () => {
+        if (!currentUrl || !onAnalyze) return
+        
+        setAnalyzing(true)
+        try {
+            const result = await analyzeImage(currentUrl)
+            if (result.error) {
+                showToast(result.error, 'error')
+            } else if (result.text) {
+                onAnalyze(result.text)
+                showToast('Image analyzed successfully', 'success')
+            }
+        } catch (error) {
+            console.error(error)
+            showToast('Failed to analyze image', 'error')
+        } finally {
+            setAnalyzing(false)
+        }
+    }
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) {
@@ -25,6 +48,7 @@ export default function PhotoUpload({ onUpload, currentUrl, label = "Upload Phot
 
         let file = e.target.files[0]
         setUploading(true)
+        let finalUrl = ''
 
         try {
             // 1. Compress Image
@@ -54,7 +78,8 @@ export default function PhotoUpload({ onUpload, currentUrl, label = "Upload Phot
                 }
 
                 const data = await res.json()
-                onUpload(data.secure_url)
+                finalUrl = data.secure_url
+                onUpload(finalUrl)
                 showToast('Photo uploaded to Cloud', 'success')
             } else {
                 // 3. Fallback: Supabase Storage
@@ -73,16 +98,16 @@ export default function PhotoUpload({ onUpload, currentUrl, label = "Upload Phot
                     throw uploadError
                 }
 
-                const { data } = supabase.storage
-                    .from('inspection-photos')
-                    .getPublicUrl(filePath)
-
-                onUpload(data.publicUrl)
-                showToast('Photo uploaded successfully (Local)', 'success')
+                const data = supabase.storage.from('inspection-photos').getPublicUrl(filePath)
+                finalUrl = data.data.publicUrl
+                onUpload(finalUrl)
+                showToast('Photo uploaded successfully', 'success')
             }
 
+
+
         } catch (error: any) {
-            console.error('Upload Error:', error)
+            console.error('Upload error:', error)
             showToast(error.message || 'Failed to upload photo', 'error')
         } finally {
             setUploading(false)
@@ -106,6 +131,8 @@ export default function PhotoUpload({ onUpload, currentUrl, label = "Upload Phot
                     >
                         <X className="h-3 w-3" /> Remove
                     </button>
+                    
+
                 </div>
             </div>
         )

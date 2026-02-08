@@ -82,7 +82,10 @@ export default function PumpConfiguration({ pumps, onChange }: PumpConfiguration
                                 min="0" // Default 0 allowed, but should be >0 ideally
                                 placeholder="0"
                                 value={pump.hp === 0 ? '' : pump.hp}
-                                onChange={e => updatePump(pump.id, { hp: parseInt(e.target.value) || 0 })}
+                                onChange={e => {
+                                    const val = parseFloat(e.target.value)
+                                    updatePump(pump.id, { hp: isNaN(val) ? 0 : val })
+                                }}
                             />
                         </div>
 

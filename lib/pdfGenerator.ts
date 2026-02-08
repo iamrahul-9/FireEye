@@ -101,21 +101,81 @@ export const generateReportPDF = (inspections: ReportInspection[], title: string
                 doc.text('1. Floor Inspection Matrix', 14, yPos)
                 yPos += 5
 
+                // Helper to get worst status from a list
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const floorRows = ins.findings.floors.map((f: any) => [
-                    f.name,
-                    f.extinguisher?.status || '-',
-                    f.hydrant?.valve || 'N/A',
-                    f.hydrant?.hose || 'N/A',
-                    f.sprinkler?.status || 'N/A',
-                    f.alarm?.status || 'N/A',
-                    f.refuge_area?.status || 'N/A',
-                    (f.extinguisher?.photo_url || f.hydrant?.valve_photo_url || f.hydrant?.hose_photo_url || f.sprinkler?.photo_url || f.alarm?.photo_url || f.refuge_area?.photo_url) ? 'View Evidence' : '-'
-                ])
+                const getWorstStatus = (items: any[], key: string, nestedKey?: string) => {
+                    if (!items || items.length === 0) return null
+                    
+                    const critical = ['expired', 'not available', 'missing', 'damaged', 'jammed', 'not working', 'obstructed', 'shutoff']
+                    const warning = ['pressure low', 'leaking', 'attention']
+                    
+                    let worstItem = null
+                    let worstSeverity = 0 // 0: Good, 1: Warning, 2: Critical
+
+                    for (const item of items) {
+                        const status = nestedKey ? item[key]?.[nestedKey] : item[key]
+                        if (!status) continue
+                        
+                        const s = status.toLowerCase()
+                        let severity = 0
+                        if (critical.some(c => s.includes(c))) severity = 2
+                        else if (warning.some(w => s.includes(w))) severity = 1
+                        
+                        if (severity > worstSeverity) {
+                            worstSeverity = severity
+                            worstItem = item
+                        } else if (severity === worstSeverity && !worstItem) {
+                                worstItem = item
+                        }
+                    }
+                    
+                    const target = worstItem || items[0]
+                    if (!target) return null
+                    
+                    if (nestedKey) {
+                        return {
+                            status: target[key]?.[nestedKey],
+                            photo_url: target[key]?.photo_url
+                        }
+                    }
+                    return {
+                        status: target[key],
+                        photo_url: target.photo_url
+                    }
+                }
+
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const floorRows = ins.findings.floors.map((f: any) => {
+                    // Extinguishers
+                    const ext = f.extinguishers ? getWorstStatus(f.extinguishers, 'status') : { status: f.extinguisher?.status, photo_url: f.extinguisher?.photo_url }
+                    
+                    // Risers
+                    const hydrant = f.risers ? getWorstStatus(f.risers, 'hydrant_valve', 'status') : { status: f.hydrant?.valve, photo_url: f.hydrant?.valve_photo_url }
+                    const hose = f.risers ? getWorstStatus(f.risers, 'hose_reel', 'status') : { status: f.hydrant?.hose, photo_url: f.hydrant?.hose_photo_url }
+                    const sprinkler = f.risers ? getWorstStatus(f.risers, 'sprinkler', 'status') : { status: f.sprinkler?.status, photo_url: f.sprinkler?.photo_url }
+                    
+                    // Alarm & Refuge
+                    const alarm = { status: f.fire_alarm?.status || f.alarm?.status, photo_url: f.fire_alarm?.photo_url || f.alarm?.photo_url }
+                    const refuge = { status: f.refuge_area?.status, photo_url: f.refuge_area?.photo_url }
+
+                    const hasProof = ext?.photo_url || hydrant?.photo_url || hose?.photo_url || sprinkler?.photo_url || alarm.photo_url || refuge.photo_url
+
+                    return [
+                        f.name,
+                        ext?.status || '-',
+                        hydrant?.status || 'N/A',
+                        hose?.status || 'N/A',
+                        sprinkler?.status || 'N/A',
+                        alarm.status || 'N/A',
+                        refuge.status || 'N/A',
+                        f.notes || '-',
+                        hasProof ? 'View Evidence' : '-'
+                    ]
+                })
 
                 autoTable(doc, {
                     startY: yPos,
-                    head: [['Floor', 'Extinguisher', 'Hydrant', 'Hose Reel', 'Sprinkler', 'Alarm', 'Refuge Area', 'Photo']],
+                    head: [['Floor', 'Extinguisher', 'Hydrant', 'Hose Reel', 'Sprinkler', 'Alarm', 'Refuge Area', 'Notes', 'Photo']],
                     body: floorRows,
                     theme: 'grid',
                     headStyles: { fillColor: [40, 40, 40], fontSize: 8 },
@@ -126,15 +186,23 @@ export const generateReportPDF = (inspections: ReportInspection[], title: string
                             applyStatusColor(data, data.column.index)
                         }
                         // Style Photo text
-                        if (data.section === 'body' && data.column.index === 7 && data.cell.raw === 'View Evidence') {
+                        if (data.section === 'body' && data.column.index === 8 && data.cell.raw === 'View Evidence') {
                             data.cell.styles.textColor = [37, 99, 235] // Blue
                         }
                     },
                     didDrawCell: function (data) {
                         // Add Link Annotation Overlay
-                        if (data.section === 'body' && data.column.index === 7 && data.cell.raw === 'View Evidence') {
+                        if (data.section === 'body' && data.column.index === 8 && data.cell.raw === 'View Evidence') {
                             const f = ins.findings.floors[data.row.index]
-                            const url = f.extinguisher?.photo_url || f.hydrant?.valve_photo_url || f.hydrant?.hose_photo_url || f.sprinkler?.photo_url || f.alarm?.photo_url || f.refuge_area?.photo_url
+                            
+                            // Re-calculate to find the "first/best" photo for the link
+                            const ext = f.extinguishers ? getWorstStatus(f.extinguishers, 'status') : { photo_url: f.extinguisher?.photo_url }
+                            const hydrant = f.risers ? getWorstStatus(f.risers, 'hydrant_valve', 'status') : { photo_url: f.hydrant?.valve_photo_url }
+                            const hose = f.risers ? getWorstStatus(f.risers, 'hose_reel', 'status') : { photo_url: f.hydrant?.hose_photo_url }
+                            const sprinkler = f.risers ? getWorstStatus(f.risers, 'sprinkler', 'status') : { photo_url: f.sprinkler?.photo_url }
+                            
+                            const url = ext?.photo_url || hydrant?.photo_url || hose?.photo_url || sprinkler?.photo_url || f.fire_alarm?.photo_url || f.alarm?.photo_url || f.refuge_area?.photo_url
+                            
                             if (url) {
                                 doc.link(data.cell.x, data.cell.y, data.cell.width, data.cell.height, { url })
                             }

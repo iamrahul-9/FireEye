@@ -12,15 +12,15 @@ import DateInput from '@/components/DateInput'
 import { Loader2, Plus, Building, Store, Check, MapPin, Phone, Mail, X, Calendar, Minus, ChevronDown, Layers, DoorOpen, Footprints } from 'lucide-react'
 import PumpConfiguration from '@/components/ClientForms/PumpConfiguration'
 import InventoryConfiguration from '@/components/ClientForms/InventoryConfiguration'
-import { Pump, FireAlarmConfig, ExtinguisherRow, ExtinguisherType, ExtinguisherConfigItem, ExtinguisherLocationConfig } from '@/components/ClientForms/types'
+import { Pump, FireAlarmConfig, ExtinguisherType, ExtinguisherConfigItem, ExtinguisherLocationConfig, SprinklerConfig, EXTINGUISHER_TYPES } from '@/components/ClientForms/types'
 
-const EXTINGUISHER_TYPES: ExtinguisherType[] = ['ABC', 'CO2', 'Clean Agent', 'ABC Modular', 'Clean Agent Modular', 'Other']
 
 // Types
 type ClientType = 'Office/Store' | 'Society/Residential'
 
 interface ClientForm {
     name: string
+    contact_person: string
     address: string
     phone: string
     email: string
@@ -42,21 +42,24 @@ interface ClientForm {
     // Extended Admin Config
     pumps: Pump[]
     fire_alarm: FireAlarmConfig
-    extinguishers: ExtinguisherRow[]
+
     extinguisher_config: ExtinguisherLocationConfig
     hydrant_points_qty: number
     hose_reel_drum_qty: number
+    sprinkler_qty: number
+    sprinkler_config: SprinklerConfig
 }
 
 const DEFAULT_ROOMS = ['Lift Room', 'Meter Room', 'Pump Room', 'Electrical Panel / Electrical Room', 'Server Room']
 const OPTIONAL_SYSTEMS = [
     'Fire Alarm System',
-    'Hydrant Valve',
-    'Hose Reel Drum',
-    'Sprinkler System'
+    // 'Hydrant Valve', // Removed per request
+    // 'Hose Reel Drum', // Removed per request
+    // 'Sprinkler System' // Removed per request
 ]
 
 export default function NewClientPage() {
+
     const router = useRouter()
     const { showToast } = useToast()
     const [loading, setLoading] = useState(false)
@@ -66,6 +69,7 @@ export default function NewClientPage() {
     // Form State
     const [form, setForm] = useState<ClientForm>({
         name: '',
+        contact_person: '',
         address: '',
         phone: '',
         email: '',
@@ -84,6 +88,7 @@ export default function NewClientPage() {
             { id: '2', name: 'Main Hydrant Pump', type: 'Monoblock', hp: 0 },
             { id: '3', name: 'Sprinkler Jockey Pump', type: 'Monoblock', hp: 0 },
             { id: '4', name: 'Main Sprinkler Pump', type: 'Monoblock', hp: 0 },
+            { id: '5', name: 'Booster Pump', type: 'Monoblock', hp: 0 }
         ],
         fire_alarm: {
             panel_qty: 1,
@@ -92,13 +97,18 @@ export default function NewClientPage() {
             mcp_qty: 0,
             hooter_qty: 0
         },
-        extinguishers: [],
+
         extinguisher_config: {
             'Lobby': [{ id: '1', type: 'ABC', count: 1 }],
             'Staircase': [{ id: '2', type: 'CO2', count: 1 }]
         },
         hydrant_points_qty: 0,
-        hose_reel_drum_qty: 0
+        hose_reel_drum_qty: 0,
+        sprinkler_qty: 0,
+        sprinkler_config: {
+            alignment: 'Pendent',
+            temperature: '68'
+        }
     })
 
     const [customRoom, setCustomRoom] = useState('')
@@ -171,34 +181,12 @@ export default function NewClientPage() {
         // Floor Logic
         const isSociety = form.type === 'Society/Residential'
         const totalFloors = isSociety 
-            ? (form.basements + form.podiums + form.residential_floors + 1) // +1 for Terrace
+            ? (form.basements + form.residential_floors + 2) // Basements + Ground + Floors(includes podiums) + Terrace
             : 1 // Office/Store = 1 unit
         
         const risers = form.riser_count
 
-        // Calculate Extinguishers from Config
-        const activePatterns = []
-        if (form.extinguisher_pattern === 'Both' || form.extinguisher_pattern === 'Lobby Only') activePatterns.push('Lobby')
-        if (form.extinguisher_pattern === 'Both' || form.extinguisher_pattern === 'Staircase Only') activePatterns.push('Staircase')
 
-        // Aggregate counts by type
-        const typeCounts: Record<string, number> = {}
-        
-        activePatterns.forEach(pattern => {
-            const configItems = form.extinguisher_config[pattern] || []
-            configItems.forEach(item => {
-                const totalQty = item.count * totalFloors
-                typeCounts[item.type] = (typeCounts[item.type] || 0) + totalQty
-            })
-        })
-
-        // Generate ID-stable inventory rows
-        const newExtinguisherRows = Object.entries(typeCounts).map(([type, qty], idx) => ({
-            id: `auto-${idx}`, // Simple ID strategy for auto-generated rows
-            type: type,
-            capacity: type.includes('CO2') ? '4.5 KG' : '6 KG', // Rough defaults
-            quantity: qty
-        }))
 
         // Update counts
         setForm(prev => {
@@ -212,7 +200,8 @@ export default function NewClientPage() {
                  },
                  hydrant_points_qty: totalFloors * risers,
                  hose_reel_drum_qty: totalFloors * risers,
-                 extinguishers: newExtinguisherRows // Completely replace or merge? Replacing is safer for strict auto-calc mode.
+                 sprinkler_qty: totalFloors * risers,
+
              }
         })
     }, [form.basements, form.podiums, form.residential_floors, form.riser_count, form.extinguisher_pattern, form.type, form.extinguisher_config])
@@ -227,6 +216,8 @@ export default function NewClientPage() {
         }))
     }
 
+
+
     const calculateStructure = () => {
         const structure: string[] = []
 
@@ -236,11 +227,15 @@ export default function NewClientPage() {
         // Ground
         structure.push('Ground')
 
-        // Podiums
-        for (let i = 1; i <= form.podiums; i++) structure.push(`P${i}`)
-
-        // Residential Floors
-        for (let i = 1; i <= form.residential_floors; i++) structure.push(`Floor ${i + form.podiums}`)
+        // Levels (Podiums + Residential)
+        // User Request: 'Floors' input = Last Floor Number. Podiums takes precedence for lower numbers.
+        for (let i = 1; i <= form.residential_floors; i++) {
+            if (i <= form.podiums) {
+                structure.push(`P${i}`)
+            } else {
+                structure.push(`Floor ${i}`)
+            }
+        }
 
         // Terrace
         structure.push('Terrace')
@@ -292,6 +287,7 @@ export default function NewClientPage() {
 
             const { error } = await supabase.from('clients').insert({
                 name: form.name,
+                contact_person: form.contact_person,
                 address: form.address,
                 phone: form.phone,
                 email: form.email,
@@ -312,10 +308,12 @@ export default function NewClientPage() {
                     // Extended Data
                     pumps: form.pumps,
                     fire_alarm: form.fire_alarm,
-                    extinguishers: form.extinguishers,
+
                     extinguisher_config: form.extinguisher_config,
                     hydrant_points_qty: form.hydrant_points_qty,
-                    hose_reel_drum_qty: form.hose_reel_drum_qty
+                    hose_reel_drum_qty: form.hose_reel_drum_qty,
+                    sprinkler_qty: form.sprinkler_qty,
+                    sprinkler_config: form.sprinkler_config
                 }
             })
 
@@ -384,16 +382,28 @@ export default function NewClientPage() {
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="md:col-span-2">
-                            <label className="block text-sm font-medium mb-2">Client Name <span className="text-red-500">*</span></label>
+                            <label className="block text-sm font-medium mb-2">
+                                {form.type === 'Society/Residential' ? 'Society / Building Name' : 'Company / Office Name'} <span className="text-red-500">*</span>
+                            </label>
                             <LiquidInput
                                 required
-                                placeholder="e.g. Lotus Heights Co-op Society"
                                 value={form.name}
                                 onChange={e => {
                                     setForm({ ...form, name: e.target.value })
                                     if (errors.name) setErrors(prev => ({ ...prev, name: undefined }))
                                 }}
                                 error={errors.name}
+                                placeholder={form.type === 'Society/Residential' ? 'e.g. Galaxy Heights' : 'e.g. Acme Corp'}
+                            />
+                        </div>
+
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium mb-2">Client Name (Person) <span className="text-red-500">*</span></label>
+                            <LiquidInput
+                                required
+                                value={form.contact_person}
+                                onChange={e => setForm({ ...form, contact_person: e.target.value })}
+                                placeholder="e.g. Mr. Sharma (Secretary)"
                             />
                         </div>
                         <div className="md:col-span-2">
@@ -541,7 +551,7 @@ export default function NewClientPage() {
                                 <p className="text-xs text-gray-500 mt-1">Generates: P1, P2...</p>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-2 text-primary">Residential Floors</label>
+                                <label className="block text-sm font-medium mb-2 text-primary">Last Floor Number</label>
                                 <input
                                     type="number"
                                     min="1"
@@ -550,7 +560,7 @@ export default function NewClientPage() {
                                     value={form.residential_floors === 0 ? '' : form.residential_floors}
                                     onChange={e => setForm({ ...form, residential_floors: parseInt(e.target.value) || 0 })}
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Numbering continues after Podiums (e.g., P3 to Floor 4)</p>
+                                <p className="text-xs text-gray-500 mt-1">Total floors above ground (including podiums)</p>
                             </div>
                         </div>
 
@@ -713,10 +723,15 @@ export default function NewClientPage() {
                                                         <div className="relative flex-1 min-w-[120px]">
                                                             <select
                                                                 className="w-full bg-transparent text-xs font-semibold text-gray-700 dark:text-gray-200 appearance-none py-1 pl-2 pr-6 focus:outline-none"
-                                                                value={item.type}
+                                                                value={EXTINGUISHER_TYPES.includes(item.type as any) ? item.type : 'Other'}
                                                                 onChange={e => {
+                                                                    const val = e.target.value
                                                                     const newItems = [...items]
-                                                                    newItems[idx].type = e.target.value as ExtinguisherType
+                                                                    if (val === 'Other') {
+                                                                        newItems[idx].type = '' as ExtinguisherType // Clear to force input
+                                                                    } else {
+                                                                        newItems[idx].type = val as ExtinguisherType
+                                                                    }
                                                                     updateExtinguisherConfig(location, newItems)
                                                                 }}
                                                             >
@@ -726,6 +741,24 @@ export default function NewClientPage() {
                                                             </select>
                                                             <ChevronDown className="absolute right-1 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
                                                         </div>
+                                                        
+                                                        {/* Other Type Input */}
+                                                        {!EXTINGUISHER_TYPES.includes(item.type as any) && (
+                                                            <div className="min-w-[100px] flex-1">
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="Type..."
+                                                                    className="w-full bg-transparent text-xs border-b border-primary/50 focus:outline-none"
+                                                                    value={item.type}
+                                                                    onChange={e => {
+                                                                         const newItems = [...items]
+                                                                         newItems[idx].type = e.target.value as ExtinguisherType
+                                                                         updateExtinguisherConfig(location, newItems)
+                                                                    }}
+                                                                    autoFocus
+                                                                />
+                                                            </div>
+                                                        )}
 
                                                         <div className="h-4 w-px bg-gray-200 dark:bg-white/10" />
                                                         
@@ -771,14 +804,16 @@ export default function NewClientPage() {
                     {isAdmin && (
                         <div className="space-y-6 animate-fade-in pt-6 border-t border-gray-100 dark:border-white/10">
                             <InventoryConfiguration
-                                extinguishers={form.extinguishers}
                                 fireAlarm={form.fire_alarm}
                                 hydrantQty={form.hydrant_points_qty}
                                 hoseReelQty={form.hose_reel_drum_qty}
-                                onChangeExtinguishers={rows => setForm({ ...form, extinguishers: rows })}
+                                sprinklerQty={form.sprinkler_qty}
+                                sprinklerConfig={form.sprinkler_config}
                                 onChangeFireAlarm={cfg => setForm({ ...form, fire_alarm: cfg })}
                                 onChangeHydrant={q => setForm({ ...form, hydrant_points_qty: q })}
                                 onChangeHoseReel={q => setForm({ ...form, hose_reel_drum_qty: q })}
+                                onChangeSprinklerQty={q => setForm({ ...form, sprinkler_qty: q })}
+                                onChangeSprinklerConfig={cfg => setForm({ ...form, sprinkler_config: cfg })}
                             />
                             <PumpConfiguration
                                 pumps={form.pumps}
@@ -786,6 +821,8 @@ export default function NewClientPage() {
                             />
                         </div>
                     )}
+
+
 
                     {/* Preview */}
                     {form.type === 'Society/Residential' && (

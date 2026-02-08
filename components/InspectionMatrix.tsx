@@ -80,6 +80,36 @@ function StatusWithPhoto({ status, photo_url, onViewPhoto }: { status: string, p
     )
 }
 
+function NoteCell({ note }: { note?: string }) {
+    const [isExpanded, setIsExpanded] = useState(false)
+
+    if (!note) return <span className="text-gray-400">-</span>
+
+    const isLong = note.length > 50
+
+    return (
+        <div className="flex flex-col items-start gap-1 min-w-[150px] max-w-[220px]">
+            <p 
+                className={`text-[10px] text-gray-600 dark:text-gray-300 leading-relaxed ${isExpanded ? '' : 'line-clamp-2'}`}
+                title={!isExpanded ? note : undefined}
+            >
+                {note}
+            </p>
+            {isLong && (
+                <button 
+                    onClick={(e) => {
+                        e.stopPropagation()
+                        setIsExpanded(!isExpanded)
+                    }}
+                    className="text-[9px] font-bold text-blue-500 hover:text-blue-600 hover:underline"
+                >
+                    {isExpanded ? 'Show Less' : 'Read More'}
+                </button>
+            )}
+        </div>
+    )
+}
+
 export default function InspectionMatrix({ findings }: { findings: any }) {
     const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null)
 
@@ -101,7 +131,7 @@ export default function InspectionMatrix({ findings }: { findings: any }) {
                         if (!status || status === 'N/A' || status === '-') return
                         total++
                         const s = status.toLowerCase()
-                        if (s.includes('fail') || s.includes('miss') || s.includes('not') || s.includes('attention') || s.includes('action')) {
+                        if (s.includes('fail') || s.includes('miss') || s.includes('not') || s.includes('attention') || s.includes('action') || s.includes('expired')) {
                             failed++
                             if (s.includes('action')) actionRequired++
                         }
@@ -112,11 +142,30 @@ export default function InspectionMatrix({ findings }: { findings: any }) {
 
                     // Count Floors
                     findings.floors?.forEach((f: any) => {
-                        checkStatus(f.extinguisher?.status)
-                        checkStatus(f.hydrant?.valve)
-                        checkStatus(f.hydrant?.hose)
-                        checkStatus(f.sprinkler?.status)
-                        checkStatus(f.alarm?.status)
+                        // Extinguishers
+                        if (f.extinguishers && Array.isArray(f.extinguishers)) {
+                            f.extinguishers.forEach((ext: any) => checkStatus(ext.status))
+                        } else {
+                            checkStatus(f.extinguisher?.status)
+                        }
+
+                        // Risers (Hydrant, Hose, Sprinkler)
+                        if (f.risers && Array.isArray(f.risers)) {
+                            f.risers.forEach((r: any) => {
+                                checkStatus(r.hydrant_valve?.status)
+                                checkStatus(r.hose_reel?.status)
+                                checkStatus(r.sprinkler?.status)
+                            })
+                        } else {
+                            checkStatus(f.hydrant?.valve)
+                            checkStatus(f.hydrant?.hose)
+                            checkStatus(f.sprinkler?.status)
+                        }
+
+                        // Alarm (Handle both old 'alarm' and new 'fire_alarm')
+                        checkStatus(f.fire_alarm?.status || f.alarm?.status)
+                        
+                        // Refuge
                         checkStatus(f.refuge_area?.status)
                     })
                     // Count Pumps
@@ -174,20 +223,79 @@ export default function InspectionMatrix({ findings }: { findings: any }) {
                                         <th className="px-4 py-3 font-bold whitespace-nowrap">Sprinkler</th>
                                         <th className="px-4 py-3 font-bold whitespace-nowrap">Alarm</th>
                                         <th className="px-4 py-3 font-bold whitespace-nowrap">Refuge Area</th>
+                                        <th className="px-4 py-3 font-bold whitespace-nowrap">Notes</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                                    {findings.floors.map((floor: any, idx: number) => (
-                                        <tr key={idx} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
-                                            <td className="px-4 py-3 font-medium">{floor.name}</td>
-                                            <td className="px-4 py-3"><StatusWithPhoto status={floor.extinguisher?.status} photo_url={floor.extinguisher?.photo_url} onViewPhoto={setSelectedPhoto} /></td>
-                                            <td className="px-4 py-3"><StatusWithPhoto status={floor.hydrant?.valve || 'N/A'} photo_url={floor.hydrant?.valve_photo_url} onViewPhoto={setSelectedPhoto} /></td>
-                                            <td className="px-4 py-3"><StatusWithPhoto status={floor.hydrant?.hose || 'N/A'} photo_url={floor.hydrant?.hose_photo_url} onViewPhoto={setSelectedPhoto} /></td>
-                                            <td className="px-4 py-3"><StatusWithPhoto status={floor.sprinkler?.status || 'N/A'} photo_url={floor.sprinkler?.photo_url} onViewPhoto={setSelectedPhoto} /></td>
-                                            <td className="px-4 py-3"><StatusWithPhoto status={floor.alarm?.status || 'N/A'} photo_url={floor.alarm?.photo_url} onViewPhoto={setSelectedPhoto} /></td>
-                                            <td className="px-4 py-3"><StatusWithPhoto status={floor.refuge_area?.status || 'N/A'} photo_url={floor.refuge_area?.photo_url} onViewPhoto={setSelectedPhoto} /></td>
-                                        </tr>
-                                    ))}
+                                    {findings.floors.map((floor: any, idx: number) => {
+                                        // Helper to get worst status from a list
+                                        const getWorstStatus = (items: any[], key: string, nestedKey?: string) => {
+                                            if (!items || items.length === 0) return null
+                                            
+                                            // Hierarchy of severity
+                                            const critical = ['expired', 'not available', 'missing', 'damaged', 'jammed', 'not working', 'obstructed', 'shutoff']
+                                            const warning = ['pressure low', 'leaking', 'attention']
+                                            
+                                            let worstItem = null
+                                            let worstSeverity = 0 // 0: Good, 1: Warning, 2: Critical
+
+                                            for (const item of items) {
+                                                const status = nestedKey ? item[key]?.[nestedKey] : item[key]
+                                                if (!status) continue
+                                                
+                                                const s = status.toLowerCase()
+                                                let severity = 0
+                                                if (critical.some(c => s.includes(c))) severity = 2
+                                                else if (warning.some(w => s.includes(w))) severity = 1
+                                                
+                                                if (severity > worstSeverity) {
+                                                    worstSeverity = severity
+                                                    worstItem = item
+                                                } else if (severity === worstSeverity && !worstItem) {
+                                                     worstItem = item
+                                                }
+                                            }
+                                            
+                                            // Return the status and photo of the worst item, or the first one if all good
+                                            /* 返回 found item or first item */
+                                            const target = worstItem || items[0]
+                                            if (!target) return null
+
+                                            if (nestedKey) {
+                                                return {
+                                                    status: target[key]?.[nestedKey],
+                                                    photo_url: target[key]?.photo_url
+                                                }
+                                            }
+                                            return {
+                                                status: target[key],
+                                                photo_url: target.photo_url
+                                            }
+                                        }
+
+                                        // Extinguishers
+                                        const extData = floor.extinguishers ? getWorstStatus(floor.extinguishers, 'status') : floor.extinguisher
+                                        
+                                        // Risers (Hydrant, Hose, Sprinkler)
+                                        const hydrantData = floor.risers ? getWorstStatus(floor.risers, 'hydrant_valve', 'status') : { status: floor.hydrant?.valve, photo_url: floor.hydrant?.valve_photo_url }
+                                        const hoseData = floor.risers ? getWorstStatus(floor.risers, 'hose_reel', 'status') : { status: floor.hydrant?.hose, photo_url: floor.hydrant?.hose_photo_url }
+                                        const sprinklerData = floor.risers ? getWorstStatus(floor.risers, 'sprinkler', 'status') : floor.sprinkler
+
+                                        return (
+                                            <tr key={idx} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
+                                                <td className="px-4 py-3 font-medium">{floor.name}</td>
+                                                <td className="px-4 py-3"><StatusWithPhoto status={extData?.status} photo_url={extData?.photo_url} onViewPhoto={setSelectedPhoto} /></td>
+                                                <td className="px-4 py-3"><StatusWithPhoto status={hydrantData?.status || 'N/A'} photo_url={hydrantData?.photo_url} onViewPhoto={setSelectedPhoto} /></td>
+                                                <td className="px-4 py-3"><StatusWithPhoto status={hoseData?.status || 'N/A'} photo_url={hoseData?.photo_url} onViewPhoto={setSelectedPhoto} /></td>
+                                                <td className="px-4 py-3"><StatusWithPhoto status={sprinklerData?.status || 'N/A'} photo_url={sprinklerData?.photo_url} onViewPhoto={setSelectedPhoto} /></td>
+                                                <td className="px-4 py-3"><StatusWithPhoto status={floor.fire_alarm?.status || floor.alarm?.status || 'N/A'} photo_url={floor.fire_alarm?.photo_url || floor.alarm?.photo_url} onViewPhoto={setSelectedPhoto} /></td>
+                                                <td className="px-4 py-3"><StatusWithPhoto status={floor.refuge_area?.status || 'N/A'} photo_url={floor.refuge_area?.photo_url} onViewPhoto={setSelectedPhoto} /></td>
+                                                <td className="px-4 py-3">
+                                                    <NoteCell note={floor.notes} />
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
                                 </tbody>
                             </table>
                         </div>

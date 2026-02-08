@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/contexts/ToastContext'
-import { Save, MapPin, Building, CheckCircle, AlertTriangle, XCircle, ChevronDown, ChevronUp, Shield, Sparkles, Minus, Plus } from 'lucide-react'
+import { Save, MapPin, Building, CheckCircle, AlertTriangle, XCircle, ChevronDown, ChevronUp, Shield, Sparkles, Minus, Plus, Loader2, Trash2 } from 'lucide-react'
 import FireEyeLoader from '@/components/FireEyeLoader'
 import { LiquidCard, LiquidButton, LiquidCheckbox } from '@/components/Liquid'
 import SearchableSelect from '@/components/SearchableSelect'
@@ -13,7 +13,10 @@ import PhotoUpload from '@/components/PhotoUpload'
 import { generateInspectionSummary } from '@/lib/smartSummary'
 import { calculateNextInspectionDate } from '@/lib/scheduling'
 import { sendAssignmentEmailAction, sendCriticalAlertAction } from '@/app/actions'
+import { generateSmartSummary } from '@/app/actions/generateSmartSummary'
+import { useCopilot } from '@/contexts/CopilotContext'
 import FloorInspectionCard from './FloorInspectionCard'
+import { ExtinguisherLocationConfig } from './ClientForms/types'
 
 // --- Types ---
 
@@ -33,11 +36,16 @@ type Client = {
         refuge_floors?: string[]
         riser_count?: number
         extinguisher_pattern?: 'Lobby Only' | 'Staircase Only' | 'Both'
+        extinguisher_config?: ExtinguisherLocationConfig
+        pumps?: { id: string, name: string, type: string, hp: number }[]
+        hydrant_points_qty?: number
+        hose_reel_drum_qty?: number
+        sprinkler_qty?: number
     }
 }
 
 // Imported from shared types or redefined to match
-export type ExtinguisherType = 'ABC' | 'CO2' | 'Clean Agent' | 'ABC Modular' | 'Clean Agent Modular' | 'Other'
+export type ExtinguisherType = string
 
 // Extinguisher data per location (Lobby or Staircase)
 export type ExtinguisherData = {
@@ -51,7 +59,7 @@ export type ExtinguisherData = {
 export type RiserData = {
     name: string
     sprinkler: {
-        status: 'Okay' | 'Butterfly Valve Shutoff' | 'Pressure Low' | 'Fire Duct Obstructed'
+        status: 'Okay' | 'Butterfly Valve Shutoff' | 'Pressure Low' | 'Fire Duct Obstructed' | 'Not Available'
         photo_url?: string
     }
     hydrant_valve: {
@@ -81,6 +89,7 @@ export type FloorData = {
         status: 'Empty' | 'Obstructed / Occupied'
         photo_url?: string
     }
+    notes?: string
 }
 
 export type RoomData = {
@@ -233,6 +242,7 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
         remarks: ''
     })
     const [loading, setLoading] = useState(false)
+    const [isGeneratingOverallSummary, setIsGeneratingOverallSummary] = useState(false)
 
     const [expandedFloors, setExpandedFloors] = useState<Record<string, boolean>>({})
     const [validationError, setValidationError] = useState<string | null>(null)
@@ -242,6 +252,16 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
         title: '',
         message: ''
     })
+
+    // Copilot Context Sync
+    const { setInspectionData } = useCopilot()
+    useEffect(() => {
+        setInspectionData(data)
+        // Cleanup on unmount
+        // return () => setInspectionData(null) // Optional: keep last context or clear? Better to clear or keep for history? 
+        // Actually, if we navigate away, we might want to keep it? No, if we leave inspection, we are not in inspection context.
+        return () => setInspectionData(null)
+    }, [data, setInspectionData])
 
     // Initialize Form when Client Selected
     useEffect(() => {
@@ -273,7 +293,37 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
             const extPattern = structure.extinguisher_pattern || 'Lobby Only'
             
             // Generate extinguishers based on pattern
+            // Generate extinguishers based on pattern or config
             const generateExtinguishers = (): ExtinguisherData[] => {
+                const config = structure.extinguisher_config
+                
+                // 1. Use Config if available (New Way)
+                if (config && Object.keys(config).length > 0) {
+                    const exts: ExtinguisherData[] = []
+                    Object.entries(config).forEach(([location, items]) => {
+                        if (items && items.length > 0) {
+                            const typeCounts: Record<string, number> = {}
+                            // Filter out 0 counts (though admin shouldn't save them, just safely)
+                            items.forEach(item => {
+                                if (item.count > 0) typeCounts[item.type] = item.count
+                            })
+                            
+                            // Only add if there are actual extinguishers configured
+                            if (Object.keys(typeCounts).length > 0) {
+                                exts.push({
+                                    location: location as 'Lobby' | 'Staircase',
+                                    status: 'Okay',
+                                    types: typeCounts
+                                })
+                            }
+                        }
+                    })
+                    
+                    // If we successfully generated based on config, return it
+                    if (exts.length > 0) return exts
+                }
+
+                // 2. Fallback to Pattern (Legacy / Simple Way)
                 if (extPattern === 'Both') {
                     return [
                         { location: 'Lobby', status: 'Okay', types: { 'ABC': 1 } },
@@ -288,11 +338,15 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
             
             // Generate risers based on count
             const generateRisers = (): RiserData[] => {
+                const hasHydrant = (structure.hydrant_points_qty || 0) > 0
+                const hasHoseReel = (structure.hose_reel_drum_qty || 0) > 0
+                const hasSprinkler = (structure.sprinkler_qty || 0) > 0
+
                 return Array.from({ length: riserCount }, (_, i) => ({
                     name: riserCount === 1 ? 'Riser Status' : `Riser ${i + 1}`,
-                    sprinkler: { status: 'Okay' },
-                    hydrant_valve: { status: 'Okay' },
-                    hose_reel: { status: 'Okay' }
+                    sprinkler: { status: hasSprinkler ? 'Okay' : 'Not Available' },
+                    hydrant_valve: { status: hasHydrant ? 'Okay' : 'Not Available' },
+                    hose_reel: { status: hasHoseReel ? 'Okay' : 'Not Available' }
                 }))
             }
             
@@ -320,33 +374,44 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                 notes: ''
             }))
 
-            // 4. Pumps (Dynamic based on Systems)
+            // 4. Pumps (Configured from Client)
             const pumps: PumpData[] = []
-            const sys = structure.systems || []
+            
+            if (structure.pumps && structure.pumps.length > 0) {
+                // Use configured pumps
+                structure.pumps.forEach(p => {
+                    pumps.push({
+                        name: p.name,
+                        status: 'Auto (Working)',
+                        pressure: '',
+                        remarks: `Type: ${p.type} (${p.hp} HP)`
+                    })
+                })
+            } else {
+                // FALLBACK for old clients without configured pumps
+                const sys = structure.systems || []
+                const hasHydrant = (structure.hydrant_points_qty || 0) > 0 || sys.includes('Hydrant Valve') || sys.includes('Hose Reel Drum')
+                const hasSprinkler = (structure.sprinkler_qty || 0) > 0 || sys.includes('Sprinkler System')
 
-            const hasHydrantSystems = sys.includes('Hydrant Valve') || sys.includes('Hose Reel Drum')
-            const hasSprinklerSystem = sys.includes('Sprinkler System')
-
-            if (hasHydrantSystems) {
-                pumps.push(
-                    { name: 'Main Pump - Hydrant', status: 'Auto (Working)', pressure: '', remarks: '' },
-                    { name: 'Jockey Pump - Hydrant', status: 'Auto (Working)', pressure: '', remarks: '' }
-                )
-            }
-
-            if (hasSprinklerSystem) {
-                pumps.push(
-                    { name: 'Main Pump - Sprinkler', status: 'Auto (Working)', pressure: '', remarks: '' },
-                    { name: 'Jockey Pump - Sprinkler', status: 'Auto (Working)', pressure: '', remarks: '' }
-                )
-            }
-
-            // Common pumps if ANY water-based system exists
-            if (hasHydrantSystems || hasSprinklerSystem) {
-                pumps.push(
-                    { name: 'Booster Pump', status: 'Auto (Working)', pressure: '', remarks: '' },
-                    { name: 'Diesel Pump', status: 'Auto (Working)', pressure: '', remarks: '' }
-                )
+                if (hasHydrant) {
+                    pumps.push(
+                        { name: 'Main Pump - Hydrant', status: 'Auto (Working)', pressure: '', remarks: '' },
+                        { name: 'Jockey Pump - Hydrant', status: 'Auto (Working)', pressure: '', remarks: '' }
+                    )
+                }
+                if (hasSprinkler) {
+                    pumps.push(
+                        { name: 'Main Pump - Sprinkler', status: 'Auto (Working)', pressure: '', remarks: '' },
+                        { name: 'Jockey Pump - Sprinkler', status: 'Auto (Working)', pressure: '', remarks: '' }
+                    )
+                }
+                if (hasHydrant || hasSprinkler) {
+                    pumps.push(
+                        { name: 'Booster Pump', status: 'Auto (Working)', pressure: '', remarks: '' }
+                    )
+                }
+                // NOTE: Diesel Pump is NOT added in fallback to respect "optional" requirement. 
+                // It must be explicitly configured in new clients.
             }
 
             // Note: Risers and extinguishers are now pre-configured during floor initialization
@@ -570,6 +635,8 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                 </div>
             </div>
 
+
+
             {/* 1.5 Wing Selection (Conditional) */}
             {selectedClient?.wings && selectedClient.wings.length > 0 && (
                 <div className="relative z-40 bg-white/80 dark:bg-black/40 border border-gray-200 dark:border-white/10 shadow-xl rounded-xl p-6 backdrop-blur-xl transition-all duration-300 ring-1 ring-black/5 -mt-4 animate-fade-in-down">
@@ -670,6 +737,7 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                                                     floorIdx={idx}
                                                     data={data}
                                                     setData={setData}
+                                                    extinguisherConfig={selectedClient?.structure?.extinguisher_config as ExtinguisherLocationConfig}
                                                 />
                                             </div>
                                         </div>
@@ -754,83 +822,144 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                                                 </div>
 
                                                 {room.extinguisher.status === 'Available' && (
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {['ABC', 'CO2', 'ABC Modular', 'Clean Agent', 'Clean Agent Modular', 'FM-200', 'Water Type'].map((type) => {
-                                                            const count = room.extinguisher.types?.[type as ExtinguisherType] || 0
-                                                            const isSelected = count > 0
-
-                                                            return (
-                                                                <div key={type} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all h-9 ${isSelected ? 'border-primary bg-primary/5' : 'border-gray-200 dark:border-white/10 bg-white dark:bg-black/20'}`}>
-                                                                    <LiquidCheckbox
-                                                                        checked={isSelected}
-                                                                        onCheckedChange={(checked) => {
-                                                                            const newRooms = [...data.rooms]
-                                                                            const newTypes = { ...newRooms[idx].extinguisher.types }
-                                                                            if (checked) {
-                                                                                newTypes[type as ExtinguisherType] = 1
-                                                                            } else {
-                                                                                delete newTypes[type as ExtinguisherType]
-                                                                            }
-                                                                            newRooms[idx].extinguisher.types = newTypes
-                                                                            setData({ ...data, rooms: newRooms })
-                                                                        }}
-                                                                    />
-                                                                    <span className="text-xs font-bold whitespace-nowrap">{type}</span>
-
-                                                                    {isSelected && (
-                                                                        <>
-                                                                            <div className="w-px h-3 bg-gray-300 dark:bg-white/20 mx-1"></div>
-                                                                            <div className="flex items-center gap-1">
-                                                                                <input
-                                                                                    type="number"
-                                                                                    min="1"
-                                                                                    className="w-8 bg-transparent border-none text-center font-mono text-xs font-bold focus:ring-0 p-0"
-                                                                                    value={count}
-                                                                                    onChange={e => {
-                                                                                        const val = parseInt(e.target.value) || 0
-                                                                                        if (val > 0) {
-                                                                                            const newRooms = [...data.rooms]
-                                                                                            newRooms[idx].extinguisher.types![type as ExtinguisherType] = val
-                                                                                            setData({ ...data, rooms: newRooms })
-                                                                                        }
-                                                                                    }}
-                                                                                />
-                                                                                <div className="flex flex-col -gap-1">
-                                                                                    <button
-                                                                                        onClick={(e) => {
-                                                                                            e.preventDefault()
-                                                                                            e.stopPropagation()
-                                                                                            const newRooms = [...data.rooms]
-                                                                                            const current = newRooms[idx].extinguisher.types![type as ExtinguisherType] || 0
-                                                                                            newRooms[idx].extinguisher.types![type as ExtinguisherType] = current + 1
-                                                                                            setData({ ...data, rooms: newRooms })
-                                                                                        }}
-                                                                                        className="text-gray-400 hover:text-primary transition-colors focus:outline-none"
-                                                                                    >
-                                                                                        <ChevronUp className="h-3 w-3" />
-                                                                                    </button>
-                                                                                    <button
-                                                                                        onClick={(e) => {
-                                                                                            e.preventDefault()
-                                                                                            e.stopPropagation()
-                                                                                            const newRooms = [...data.rooms]
-                                                                                            const current = newRooms[idx].extinguisher.types![type as ExtinguisherType] || 0
-                                                                                            if (current > 1) {
-                                                                                                newRooms[idx].extinguisher.types![type as ExtinguisherType] = current - 1
-                                                                                                setData({ ...data, rooms: newRooms })
-                                                                                            }
-                                                                                        }}
-                                                                                        className="text-gray-400 hover:text-primary transition-colors focus:outline-none"
-                                                                                    >
-                                                                                        <ChevronDown className="h-3 w-3" />
-                                                                                    </button>
-                                                                                </div>
-                                                                            </div>
-                                                                        </>
+                                                    <div className="space-y-3">
+                                                        {Object.entries(room.extinguisher.types).map(([type, count]) => (
+                                                            <div key={type} className="flex items-center gap-2 bg-white dark:bg-black/20 p-2 rounded-lg border border-gray-200 dark:border-white/10">
+                                                                <div className="flex-1 min-w-[120px]">
+                                                                    {['ABC', 'CO2', 'Clean Agent', 'ABC Modular', 'Clean Agent Modular', 'Water Type', 'Foam', 'Other'].includes(type) ? (
+                                                                        <div className="relative">
+                                                                            <select
+                                                                                className="w-full bg-transparent text-xs font-bold appearance-none py-1 pl-2 pr-6 focus:outline-none"
+                                                                                value={type}
+                                                                                onChange={e => {
+                                                                                    const newType = e.target.value
+                                                                                    if (newType === type) return
+                                                                                    const newRooms = [...data.rooms]
+                                                                                    const newTypes = { ...newRooms[idx].extinguisher.types }
+                                                                                    const currentCount = newTypes[type] || 0
+                                                                                    delete newTypes[type]
+                                                                                    newTypes[newType] = (newTypes[newType] || 0) + currentCount
+                                                                                    newRooms[idx].extinguisher.types = newTypes
+                                                                                    setData({ ...data, rooms: newRooms })
+                                                                                }}
+                                                                            >
+                                                                                {['ABC', 'CO2', 'Clean Agent', 'ABC Modular', 'Clean Agent Modular', 'Water Type', 'Foam', 'Other'].map(t => (
+                                                                                    <option key={t} value={t}>{t}</option>
+                                                                                ))}
+                                                                                {/* Keep current if not in list (custom) */}
+                                                                                {!['ABC', 'CO2', 'Clean Agent', 'ABC Modular', 'Clean Agent Modular', 'Water Type', 'Foam', 'Other'].includes(type) && (
+                                                                                    <option value={type}>{type}</option>
+                                                                                )}
+                                                                            </select>
+                                                                            <ChevronDown className="absolute right-1 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="flex items-center">
+                                                                            <input
+                                                                                type="text"
+                                                                                className="w-full bg-transparent text-xs font-bold border-b border-primary/50 focus:outline-none"
+                                                                                value={type}
+                                                                                autoFocus
+                                                                                onChange={e => {
+                                                                                    const newType = e.target.value
+                                                                                    const newRooms = [...data.rooms]
+                                                                                    const newTypes = { ...newRooms[idx].extinguisher.types }
+                                                                                    const currentCount = newTypes[type] || 0
+                                                                                    delete newTypes[type]
+                                                                                    // Prevent empty keys
+                                                                                    if (newType) {
+                                                                                        newTypes[newType] = currentCount
+                                                                                    }
+                                                                                    newRooms[idx].extinguisher.types = newTypes
+                                                                                    setData({ ...data, rooms: newRooms })
+                                                                                }}
+                                                                            />
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                     // Revert to Other or ABC?
+                                                                                     // effectively delete if empty, handled by trash button
+                                                                                }}
+                                                                                className="hidden"
+                                                                            />
+                                                                        </div>
                                                                     )}
                                                                 </div>
-                                                            )
-                                                        })}
+
+                                                                {/* Quantity */}
+                                                                <div className="flex items-center gap-1 bg-gray-100 dark:bg-white/10 rounded-lg p-0.5">
+                                                                       <button
+                                                                           onClick={(e) => {
+                                                                               e.preventDefault()
+                                                                               const newRooms = [...data.rooms]
+                                                                               const current = newRooms[idx].extinguisher.types[type] || 0
+                                                                               if (current > 1) {
+                                                                                   newRooms[idx].extinguisher.types[type] = current - 1
+                                                                                   setData({ ...data, rooms: newRooms })
+                                                                               } else {
+                                                                                   // Remove if 0? or keep 1?
+                                                                                   // Usually trash button removes. keep 1 min.
+                                                                               }
+                                                                           }}
+                                                                           className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-black dark:hover:text-white"
+                                                                       >
+                                                                           <Minus className="h-3 w-3" />
+                                                                       </button>
+                                                                       <span className="w-8 text-center text-xs font-bold">{count}</span>
+                                                                       <button
+                                                                           onClick={(e) => {
+                                                                               e.preventDefault()
+                                                                               const newRooms = [...data.rooms]
+                                                                               const current = newRooms[idx].extinguisher.types[type] || 0
+                                                                               newRooms[idx].extinguisher.types[type] = current + 1
+                                                                               setData({ ...data, rooms: newRooms })
+                                                                           }}
+                                                                           className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-black dark:hover:text-white"
+                                                                       >
+                                                                           <Plus className="h-3 w-3" />
+                                                                       </button>
+                                                                </div>
+
+                                                                {/* Remove */}
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const newRooms = [...data.rooms]
+                                                                        const newTypes = { ...newRooms[idx].extinguisher.types }
+                                                                        delete newTypes[type]
+                                                                        newRooms[idx].extinguisher.types = newTypes
+                                                                        setData({ ...data, rooms: newRooms })
+                                                                    }}
+                                                                    className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+
+                                                        <button
+                                                            onClick={() => {
+                                                                const newRooms = [...data.rooms]
+                                                                const newTypes = { ...newRooms[idx].extinguisher.types }
+                                                                // Find a type not used
+                                                                const validTypes = ['ABC', 'CO2', 'Clean Agent', 'Other']
+                                                                const nextType = validTypes.find(t => !newTypes[t]) || 'Other'
+                                                                
+                                                                if (newTypes[nextType]) {
+                                                                    // If Other/Default taken, use timestamp to make unique? No, keys must be unique types.
+                                                                    // If 'Other' exists, we should probably add 'Other 2'?
+                                                                    // But mapped by type string.
+                                                                    // Just add 'New Type'
+                                                                    newTypes['New Type'] = 1
+                                                                } else {
+                                                                    newTypes[nextType] = 1
+                                                                }
+                                                                
+                                                                newRooms[idx].extinguisher.types = newTypes
+                                                                setData({ ...data, rooms: newRooms })
+                                                            }}
+                                                            className="text-xs font-bold text-primary flex items-center gap-1 hover:underline px-1"
+                                                        >
+                                                            <Plus className="h-3 w-3" /> Add Extinguisher
+                                                        </button>
                                                     </div>
                                                 )}
                                             </div>
@@ -971,14 +1100,39 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                             <h3 className="text-lg font-bold">Overall Remarks <span className="text-red-500">*</span></h3>
                             <button
                                 type="button"
-                                onClick={() => {
-                                    const summary = generateInspectionSummary(data)
-                                    setData({ ...data, remarks: summary })
+                                onClick={async () => {
+                                    setIsGeneratingOverallSummary(true)
+                                    try {
+                                        // 1. Check for Custom API Settings
+                                        let aiConfig = undefined
+                                        const stored = localStorage.getItem('fireeye_api_settings')
+                                        if (stored) {
+                                            const parsed = JSON.parse(stored)
+                                            if (parsed.useCustom && parsed.apiKey) {
+                                                aiConfig = { apiKey: parsed.apiKey, model: parsed.model }
+                                                console.log('Using Custom AI Settings:', parsed.model)
+                                            }
+                                        }
+
+                                        const res = await generateSmartSummary(data, aiConfig)
+                                        if (res.text) {
+                                            setData({ ...data, remarks: res.text })
+                                        }
+                                    } catch (err) {
+                                        console.error(err)
+                                    } finally {
+                                        setIsGeneratingOverallSummary(false)
+                                    }
                                 }}
-                                className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white rounded-full text-xs font-bold shadow-md transition-all hover:scale-105"
+                                disabled={isGeneratingOverallSummary}
+                                className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white rounded-full text-xs font-bold shadow-md transition-all hover:scale-105 disabled:opacity-70 disabled:scale-100"
                             >
-                                <Sparkles className="h-3 w-3" />
-                                Fill with AI
+                                {isGeneratingOverallSummary ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                    <Sparkles className="h-3 w-3" />
+                                )}
+                                {isGeneratingOverallSummary ? 'Generating Report...' : 'Generate Executive Report'}
                             </button>
                         </div>
                         <textarea

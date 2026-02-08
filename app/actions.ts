@@ -23,3 +23,5 @@ export async function sendCriticalAlertAction(props: {
     console.log('Server Action: Sending Critical Alert to', adminEmail)
     return await sendCriticalIssueAlert({ ...props, adminEmail })
 }
+
+
