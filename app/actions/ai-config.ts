@@ -4,8 +4,10 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 
 export async function fetchGeminiModels(apiKey: string) {
     if (!apiKey) {
+        console.error('SERVER ACTION: Missing API Key')
         return { error: 'API Key is required' }
     }
+    console.log('SERVER ACTION: Fetching models with key ending in...', apiKey.slice(-4))
 
     try {
         // The Node SDK doesn't always expose listModels directly in older versions, 
