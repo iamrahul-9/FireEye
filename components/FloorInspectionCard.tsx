@@ -3,7 +3,7 @@
 import { Minus, Plus, AlertTriangle, Trash2, ChevronDown } from 'lucide-react'
 import PhotoUpload from '@/components/PhotoUpload'
 
-import { FloorData, ExtinguisherData, RiserData, InspectionData } from './DynamicInspectionForm'
+import { FloorData, ExtinguisherData, RiserData, InspectionData } from '@/types/inspection'
 import { EXTINGUISHER_TYPES, ExtinguisherLocationConfig } from './ClientForms/types'
 
 interface FloorInspectionCardProps {
