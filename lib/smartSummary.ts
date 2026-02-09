@@ -1,4 +1,4 @@
-import { InspectionData } from '@/components/DynamicInspectionForm'
+import { InspectionData } from '@/types/inspection'
 
 export const generateInspectionSummary = (data: InspectionData): string => {
     const criticalIssues: string[] = []
