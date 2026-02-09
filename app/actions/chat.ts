@@ -1,7 +1,7 @@
 'use server'
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
-import { InspectionData } from '@/components/DynamicInspectionForm'
+import { InspectionData } from '@/types/inspection'
 
 const SYSTEM_PROMPT = `
 You are "FireEye Copilot" 🔥, the expert AI Assistant for the FireEye Platform.

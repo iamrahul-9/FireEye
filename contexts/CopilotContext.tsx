@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, ReactNode } from 'react'
-import { InspectionData } from '@/components/DynamicInspectionForm'
+import { InspectionData } from '@/types/inspection'
 
 interface CopilotContextType {
     inspectionData: InspectionData | null
