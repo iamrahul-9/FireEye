@@ -1,9 +1,10 @@
 'use server'
 
-import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
 export async function createInspectorUser(data: { email: string; password: string; fullName: string; adminUserId: string }) {
     try {
+        const supabaseAdmin = getSupabaseAdmin()
         // Get admin's organization from their profile
         const { data: adminProfile } = await supabaseAdmin
             .from('profiles')

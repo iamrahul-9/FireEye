@@ -2,7 +2,7 @@
 
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
 async function createClient() {
     const cookieStore = await cookies()
@@ -50,6 +50,7 @@ export async function ensureUserProfile() {
     console.log(`[ProfileHealer] Profile missing for ${user.email}. Creating now...`)
 
     // Use Admin client to bypass RLS for insertion
+    const supabaseAdmin = getSupabaseAdmin()
     const { error: insertError } = await supabaseAdmin
         .from('profiles')
         .insert({
