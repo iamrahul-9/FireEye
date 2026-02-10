@@ -105,13 +105,13 @@ export default function DashboardLayout({
                         <Flame className="h-6 w-6 text-primary" />
                         <span className="font-bold text-lg">FireEye</span>
                     </div>
-                <button
-                    onClick={() => setSidebarOpen(!sidebarOpen)}
-                    className="p-2 rounded-md text-gray-500 hover:bg-white/10"
-                >
-                    {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
-                </button>
-            </div>
+                    <button
+                        onClick={() => setSidebarOpen(!sidebarOpen)}
+                        className="p-2 rounded-md text-gray-500 hover:bg-white/10"
+                    >
+                        {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+                    </button>
+                </div>
 
             <div className="flex h-screen overflow-hidden relative z-10 print:h-auto print:overflow-visible pt-[60px] lg:pt-0">
                 {/* Sidebar - Premium Glass with Depth */}
