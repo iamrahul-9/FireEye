@@ -2,6 +2,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { InspectionData } from '@/types/inspection'
+import { findAnswer } from '@/lib/copilotKnowledge'
 
 const SYSTEM_PROMPT = `
 You are "FireEye Copilot" 🔥, the expert AI Assistant for the FireEye Platform.
@@ -32,8 +33,11 @@ export async function chatWithMarshal(
     const apiKey = aiConfig?.apiKey || process.env.GOOGLE_API_KEY
     const modelName = aiConfig?.model || 'gemini-2.5-flash-lite'
 
+    // If no API key, immediately use Q&A fallback
     if (!apiKey) {
-        return { error: 'API Key missing. Please configure key in Profile -> API Settings.' }
+        console.log('[Copilot] No API key available, using Q&A fallback')
+        const lastMsg = messages[messages.length - 1]?.parts || ''
+        return findAnswer(lastMsg)
     }
 
     try {
@@ -57,10 +61,6 @@ export async function chatWithMarshal(
             parts: [{ text: contextString }]
         }
 
-        // We filter out the first message if it's just the exact same system greeting from client to save tokens, 
-        // but client state management usually handles display. 
-        // Here we just prepend our hidden context.
-        
         const history = [contextMessage, ...messages.slice(0, -1).map(m => ({
             role: m.role,
             parts: [{ text: m.parts }]
@@ -77,8 +77,11 @@ export async function chatWithMarshal(
 
         return { text: responseText }
 
-    } catch (error: any) {
-        console.error('Marshal Chat Error:', error)
-        return { error: error.message || 'Failed to connect to Marshal.' }
+    } catch (error: unknown) {
+        // ── FAILSAFE: Fall back to Q&A knowledge base ──
+        console.error('[Copilot] AI failed, falling back to Q&A:', error)
+        const lastMsg = messages[messages.length - 1]?.parts || ''
+        return findAnswer(lastMsg)
     }
 }
+

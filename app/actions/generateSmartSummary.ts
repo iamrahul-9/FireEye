@@ -2,6 +2,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { InspectionData } from '@/types/inspection'
+import { generateInspectionSummary } from '@/lib/smartSummary'
 
 
 
@@ -40,8 +41,11 @@ export async function generateSmartSummary(data: InspectionData, aiConfig?: { ap
     const apiKey = aiConfig?.apiKey || process.env.GOOGLE_API_KEY
     const modelName = aiConfig?.model || 'gemini-2.5-flash-lite' // User requested default
 
+    // If no API key at all, immediately use local fallback
     if (!apiKey) {
-        return { error: 'Google API Key not configured (System or Custom)' }
+        console.log('[SmartSummary] No API key available, using local fallback')
+        const localSummary = generateInspectionSummary(data)
+        return { text: localSummary, fallback: true }
     }
 
     try {
@@ -131,8 +135,11 @@ export async function generateSmartSummary(data: InspectionData, aiConfig?: { ap
         const text = result.response.text()
         return { text }
 
-    } catch (error: any) {
-        console.error('Smart Summary Error:', error)
-        return { error: 'Failed to generate summary.' }
+    } catch (error: unknown) {
+        // ── FAILSAFE: Fall back to local summary engine ──
+        console.error('[SmartSummary] AI failed, falling back to local engine:', error)
+        const localSummary = generateInspectionSummary(data)
+        return { text: localSummary, fallback: true }
     }
 }
+

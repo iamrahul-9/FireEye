@@ -1035,6 +1035,10 @@ export default function DynamicInspectionForm({ clients, user }: { clients: any[
                                         const res = await generateSmartSummary(data, aiConfig)
                                         if (res.text) {
                                             setData({ ...data, remarks: res.text })
+                                            // Show fallback indicator via toast if summary was generated locally
+                                            if ('fallback' in res && res.fallback) {
+                                                alert('⚡ AI unavailable — summary generated using local engine.')
+                                            }
                                         }
                                     } catch (err) {
                                         console.error(err)

@@ -35,6 +35,7 @@ export default function FireEyeCopilot() {
     ])
     const [input, setInput] = useState('')
     const [loading, setLoading] = useState(false)
+    const [isOffline, setIsOffline] = useState(false)
     const messagesEndRef = useRef<HTMLDivElement>(null)
 
     const scrollToBottom = () => {
@@ -70,7 +71,12 @@ export default function FireEyeCopilot() {
 
             const response = await chatWithMarshal([...messages, userMsg], contextData, aiConfig, pathname)
 
-            if (response.error) {
+            // Track if we're in fallback/offline mode
+            if ('fallback' in response && response.fallback) {
+                setIsOffline(true)
+            }
+
+            if ('error' in response && response.error) {
                 setMessages(prev => [...prev, { role: 'model', parts: `⚠️ ${response.error}` }])
             } else if (response.text) {
                 setMessages(prev => [...prev, { role: 'model', parts: response.text }])
@@ -104,9 +110,9 @@ export default function FireEyeCopilot() {
                                 <div>
                                     <h3 className="font-bold text-sm tracking-wide text-zinc-900 dark:text-white">FireEye Copilot</h3>
                                     <div className="flex items-center gap-1.5">
-                                        <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${inspectionData ? 'bg-green-500' : 'bg-green-500'}`}></span>
+                                        <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${isOffline ? 'bg-amber-500' : 'bg-green-500'}`}></span>
                                         <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                                            {inspectionData ? 'Context: Active' : 'Online'}
+                                            {isOffline ? 'Offline Mode' : inspectionData ? 'Context: Active' : 'Online'}
                                         </p>
                                     </div>
                                 </div>
